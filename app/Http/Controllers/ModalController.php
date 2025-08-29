@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Inertia\Inertia;
+use App\Models\Account;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 
@@ -11,11 +12,11 @@ class ModalController extends Controller
     /**
      * Show the sample modal
      */
-    public function sample(Request $request)
+    public function sample(Request $request, Account $account)
     {
         return Inertia::modal('SampleModal', [
             'message' => $request->get('message', 'This is a sample modal to demonstrate the inertiaui/modal package!')
-        ])->baseUrl(route('dashboard'));
+        ])->baseUrl(route('account.dashboard', ['account' => $account->id]));
     }
 
     /**
@@ -32,6 +33,6 @@ class ModalController extends Controller
         // Here you would normally save the data or perform some action
         // For now, we'll just return a success message
 
-        return redirect()->route('dashboard')->with('success', 'Sample modal form submitted successfully!');
+        return redirect()->route('account.dashboard')->with('success', 'Sample modal form submitted successfully!');
     }
 }

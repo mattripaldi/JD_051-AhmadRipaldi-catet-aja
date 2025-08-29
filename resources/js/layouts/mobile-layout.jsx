@@ -3,9 +3,10 @@ import { Home, User } from 'lucide-react';
 
 const BottomNavigation = () => {
     const { url: currentPath } = usePage();
+    const { auth } = usePage().props;
 
     const navItems = [
-        { name: 'Dashboard', href: '/dashboard', icon: Home, active: currentPath === '/dashboard' || currentPath === '/' },
+        { name: 'Dashboard', href: `/account/${auth.account.id}/dashboard`, icon: Home, active: currentPath === '/dashboard' || currentPath === '/' },
         { name: 'Profile', href: '/settings/profile', icon: User, active: currentPath.startsWith('/settings/profile') }
     ];
 
@@ -33,10 +34,11 @@ const BottomNavigation = () => {
     );
 };
 
-export default function MobileLayout({ children }) {
+export default function MobileLayout({ children, header }) {
     return (
         <div className="min-h-screen bg-gray-100">
             <div className="max-w-[480px] mx-auto bg-white min-h-screen pb-24 relative overflow-x-hidden">
+                {header}
                 {children}
             </div>
             <BottomNavigation />

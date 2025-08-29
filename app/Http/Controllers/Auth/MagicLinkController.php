@@ -88,6 +88,12 @@ class MagicLinkController extends Controller
         // Log the user in
         Auth::login($user);
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Check if user has a current account and redirect accordingly
+        if ($user->current_account_id) {
+            return redirect()->intended(route('account.dashboard', ['account' => $user->current_account_id], absolute: false));
+        }
+        
+        // Otherwise, redirect to account selection
+        return redirect()->intended(route('account.index', absolute: false));
     }
 }

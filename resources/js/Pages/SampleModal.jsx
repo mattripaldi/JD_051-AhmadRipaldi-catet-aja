@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import DrawerModal from '@/components/common/drawer-modal';
 
-export default function SampleModal({ message = "This is a sample modal!" }) {
+export default function SampleModal({ message = "Ini adalah modal contoh!" }) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         email: '',
@@ -28,14 +28,14 @@ export default function SampleModal({ message = "This is a sample modal!" }) {
             <div className="flex-1 space-y-6">
                 <div className="space-y-2">
                     <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                        Name
+                        Nama
                     </Label>
                     <Input
                         id="name"
                         type="text"
                         value={data.name}
                         onChange={(e) => setData('name', e.target.value)}
-                        placeholder="Enter your name"
+                        placeholder="Masukkan nama Anda"
                         className="h-12 text-base border-gray-200 focus:border-gray-400 focus:ring-gray-400"
                     />
                     {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name}</p>}
@@ -50,7 +50,7 @@ export default function SampleModal({ message = "This is a sample modal!" }) {
                         type="email"
                         value={data.email}
                         onChange={(e) => setData('email', e.target.value)}
-                        placeholder="Enter your email"
+                        placeholder="Masukkan email Anda"
                         className="h-12 text-base border-gray-200 focus:border-gray-400 focus:ring-gray-400"
                         autoComplete="email"
                     />
@@ -59,14 +59,14 @@ export default function SampleModal({ message = "This is a sample modal!" }) {
 
                 <div className="space-y-2">
                     <Label htmlFor="message" className="text-sm font-medium text-gray-700">
-                        Message
+                        Pesan
                     </Label>
                     <Input
                         id="message"
                         type="text"
                         value={data.message}
                         onChange={(e) => setData('message', e.target.value)}
-                        placeholder="Enter a message"
+                        placeholder="Masukkan pesan"
                         className="h-12 text-base border-gray-200 focus:border-gray-400 focus:ring-gray-400"
                     />
                     {errors.message && <p className="text-sm text-red-600 mt-1">{errors.message}</p>}
@@ -79,7 +79,7 @@ export default function SampleModal({ message = "This is a sample modal!" }) {
                     disabled={processing}
                     className="w-full h-12 text-base font-medium bg-gray-900 hover:bg-gray-800 text-white"
                 >
-                    {processing ? 'Submitting...' : 'Submit'}
+                    {processing ? 'Mengirim...' : 'Kirim'}
                 </Button>
                 <Button 
                     type="button"
@@ -87,7 +87,7 @@ export default function SampleModal({ message = "This is a sample modal!" }) {
                     className="w-full h-12 text-base font-medium border-gray-200 text-gray-700 hover:bg-gray-50"
                     onClick={() => close()}
                 >
-                    Cancel
+                    Batal
                 </Button>
             </div>
         </form>
@@ -95,7 +95,7 @@ export default function SampleModal({ message = "This is a sample modal!" }) {
 
     return (
         <DrawerModal
-            title="Sample Modal"
+            title="Modal Contoh"
             description={message}
         >
             {renderContent}

@@ -33,7 +33,15 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $user = Auth::user();
+        
+        // If user already has a current account, redirect to that account's dashboard
+        if ($user->current_account_id) {
+            return redirect()->intended(route('account.dashboard', ['account' => $user->current_account_id], absolute: false));
+        }
+        
+        // Otherwise, redirect to account selection
+        return redirect()->intended(route('account.index', absolute: false));
     }
 
     /**

@@ -4,14 +4,14 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-    User, 
-    Mail, 
-    Shield, 
-    Trash2, 
-    Edit, 
-    Check, 
-    X, 
+import {
+    User,
+    Mail,
+    Shield,
+    Trash2,
+    Edit,
+    Check,
+    X,
     ChevronRight,
     LogOut
 } from 'lucide-react';
@@ -27,6 +27,20 @@ import {
     DrawerTrigger,
 } from "@/components/ui/drawer";
 import InputError from '@/components/common/input-error';
+
+const ProfileHeader = ({ auth }) => {
+    return (
+        <div className="bg-gradient-to-b from-green-500 to-green-600 px-4 pt-12 pb-6">
+            <div className="text-center text-white">
+                <div className="w-20 h-20 bg-white/20 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <User size={32} className="text-white" />
+                </div>
+                <h1 className="text-xl font-semibold">{auth.user.name}</h1>
+                <p className="text-green-100 text-sm">{auth.user.email}</p>
+            </div>
+        </div>
+    );
+};
 
 export default function NewProfile({ mustVerifyEmail, status }) {
     const { auth } = usePage().props;
@@ -97,19 +111,8 @@ export default function NewProfile({ mustVerifyEmail, status }) {
     };
 
     return (
-        <MobileLayout>
+        <MobileLayout header={<ProfileHeader auth={auth} />}>
             <Head title="Profil" />
-            
-            {/* Header */}
-            <div className="bg-gradient-to-b from-green-500 to-green-600 px-4 pt-12 pb-6">
-                <div className="text-center text-white">
-                    <div className="w-20 h-20 bg-white/20 rounded-full mx-auto mb-4 flex items-center justify-center">
-                        <User size={32} className="text-white" />
-                    </div>
-                    <h1 className="text-xl font-semibold">{auth.user.name}</h1>
-                    <p className="text-green-100 text-sm">{auth.user.email}</p>
-                </div>
-            </div>
 
             <div className="px-4 -mt-4 space-y-4">
                 {/* Profile Information Card */}
@@ -175,23 +178,23 @@ export default function NewProfile({ mustVerifyEmail, status }) {
                             )}
 
                             <div className="flex gap-2">
-                                                                        <Button 
-                                            type="submit" 
-                                            disabled={processing}
-                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                                        >
-                                            {processing ? (
-                                                <>
-                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                                                    Menyimpan...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Check size={16} className="mr-2" />
-                                                    Simpan
-                                                </>
-                                            )}
-                                        </Button>
+                                <Button 
+                                    type="submit" 
+                                    disabled={processing}
+                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                                >
+                                    {processing ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                                            Menyimpan...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Check size={16} className="mr-2" />
+                                            Simpan
+                                        </>
+                                    )}
+                                </Button>
                                 <Button 
                                     type="button" 
                                     onClick={() => setEditingProfile(false)}
@@ -334,8 +337,6 @@ export default function NewProfile({ mustVerifyEmail, status }) {
                         </DrawerContent>
                     </Drawer>
                 </Card>
-
-
 
                 {/* Danger Zone */}
                 <Card className="p-4 bg-white rounded-xl shadow-sm border border-red-200">

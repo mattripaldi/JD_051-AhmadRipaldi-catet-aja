@@ -25,6 +25,7 @@ class User extends Authenticatable
         'provider',
         'provider_id',
         'avatar',
+        'current_account_id',
     ];
 
     /**
@@ -37,5 +38,20 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    
+    /**
+     * Get the accounts for the user.
+     */
+    public function accounts()
+    {
+        return $this->hasMany(Account::class);
+    }
+
+    /**
+     * Get the current account for the user.
+     */
+    public function currentAccount()
+    {
+        return $this->belongsTo(Account::class, 'current_account_id');
+    }
+
 }

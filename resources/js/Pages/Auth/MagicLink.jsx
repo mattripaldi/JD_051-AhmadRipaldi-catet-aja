@@ -21,22 +21,22 @@ export default function MagicLink({ status }) {
         post(route('magic-link.send'), {
             onSuccess: () => {
                 reset('email');
-                setFeedback('Magic link sent successfully! Please check your email.');
+                setFeedback('Magic link berhasil dikirim! Silakan periksa email Anda.');
             },
             onError: () => {
-                setFeedback('Failed to send magic link. Please try again.');
+                setFeedback('Gagal mengirim magic link. Silakan coba lagi.');
             }
         });
     };
 
     return (
-        <AuthLayout title="Sign in with Magic Link" description="Enter your email address and we'll send you a magic link to sign in">
+        <AuthLayout title="Masuk dengan Magic Link" description="Masukkan alamat email Anda dan kami akan mengirimkan magic link untuk masuk">
             <Head title="Magic Link" />
 
             <form className="flex flex-col gap-6" onSubmit={submit}>
                 <div className="grid gap-6">
                     <div className="grid gap-2">
-                        <Label htmlFor="email">Email address</Label>
+                        <Label htmlFor="email">Alamat Email</Label>
                         <Input
                             id="email"
                             type="email"
@@ -53,23 +53,19 @@ export default function MagicLink({ status }) {
 
                     <Button type="submit" className="mt-4 w-full" tabIndex={2} disabled={processing}>
                         {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                        Send Magic Link
+                        Kirim Magic Link
                     </Button>
                 </div>
 
                 <div className="text-muted-foreground text-center text-sm">
                     <a href={route('login')} className="underline hover:no-underline" tabIndex={3}>
-                        Back to login
+                        Kembali ke login
                     </a>
                 </div>
             </form>
 
             {feedback && (
-                <div className={`mb-4 text-center text-sm font-medium ${
-                    feedback.includes('successfully')
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                }`}>
+                <div className={`mb-4 text-center text-sm font-medium text-green-600`}>
                     {feedback}
                 </div>
             )}

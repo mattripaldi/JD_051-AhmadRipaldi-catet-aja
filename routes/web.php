@@ -26,8 +26,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
     });
 
-    Route::get('modal/sample', [ModalController::class, 'sample'])->name('modal.sample');
-    Route::post('modal/sample', [ModalController::class, 'storeSample'])->name('modal.sample.store');
+    Route::get('modal/sample/{account}', [ModalController::class, 'sample'])->name('modal.sample');
+    Route::post('modal/sample/{account}', [ModalController::class, 'storeSample'])->name('modal.sample.store');
 });
 
 require __DIR__.'/settings.php';

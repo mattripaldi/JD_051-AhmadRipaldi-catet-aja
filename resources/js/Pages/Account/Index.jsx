@@ -14,6 +14,22 @@ export default function AccountIndex({ accounts }) {
         post(route('account.select', accountId));
     };
 
+    // Array of elegant, muted gradient combinations
+    const cardStyles = [
+        'bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 hover:from-blue-500 hover:via-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl',
+        'bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:via-emerald-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl',
+        'bg-gradient-to-br from-purple-400 via-purple-500 to-purple-600 hover:from-purple-500 hover:via-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl',
+        'bg-gradient-to-br from-rose-400 via-rose-500 to-rose-600 hover:from-rose-500 hover:via-rose-600 hover:to-rose-700 text-white shadow-lg hover:shadow-xl',
+        'bg-gradient-to-br from-indigo-400 via-indigo-500 to-indigo-600 hover:from-indigo-500 hover:via-indigo-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl',
+        'bg-gradient-to-br from-teal-400 via-teal-500 to-teal-600 hover:from-teal-500 hover:via-teal-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl',
+        'bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 hover:from-orange-500 hover:via-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl',
+        'bg-gradient-to-br from-slate-400 via-slate-500 to-slate-600 hover:from-slate-500 hover:via-slate-600 hover:to-slate-700 text-white shadow-lg hover:shadow-xl',
+    ];
+
+    const getCardStyle = (index) => {
+        return cardStyles[index % cardStyles.length];
+    };
+
     return (
         <AccountLayout>
             <Head title="Akun" />
@@ -69,15 +85,18 @@ export default function AccountIndex({ accounts }) {
                         </ModalLink>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-4">
-                        {accounts.map((account) => (
-                            <Card key={account.id} className="relative hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleAccountSelect(account.id)}>
-                                <CardHeader className="pb-3">
-                                    <div className="flex items-start justify-between">
+                    <div className="grid grid-cols-1 gap-6">
+                        {accounts.map((account, index) => (
+                            <Card key={account.id} className={`relative transition-all duration-300 cursor-pointer border-0 rounded-xl overflow-hidden hover:scale-[1.02] hover:-translate-y-1 ${getCardStyle(index)}`} onClick={() => handleAccountSelect(account.id)}>
+                                <CardHeader className="pb-3 relative">
+                                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-6 translate-x-6"></div>
+                                    <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-4 -translate-x-4"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-white/10 pointer-events-none"></div>
+                                    <div className="relative z-10 flex items-start justify-between">
                                         <div className="flex-1">
-                                            <CardTitle className="text-lg">{account.name}</CardTitle>
+                                            <CardTitle className="text-lg font-semibold text-white drop-shadow-sm">{account.name}</CardTitle>
                                             {account.description && (
-                                                <p className="text-sm text-gray-600 mt-1">{account.description}</p>
+                                                <p className="text-sm text-white/90 mt-1 drop-shadow-sm">{account.description}</p>
                                             )}
                                         </div>
                                         <DropdownMenu>
@@ -85,13 +104,13 @@ export default function AccountIndex({ accounts }) {
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
-                                                    className="h-8 w-8 p-0 text-gray-600 hover:text-gray-700 hover:bg-gray-50 z-10 relative"
+                                                    className="h-8 w-8 p-0 text-white/80 hover:text-white hover:bg-white/20 z-20 relative backdrop-blur-sm"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <MoreVertical className="w-4 h-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-10">
+                                            <DropdownMenuContent align="end" className="w-48 bg-white/95 backdrop-blur-md border-white/20 shadow-xl">
                                                 <ModalLink href={`/account/${account.id}/edit`}>
                                                     <DropdownMenuItem className="cursor-pointer">
                                                         <Edit2 className="w-4 h-4 mr-2 text-blue-600" />

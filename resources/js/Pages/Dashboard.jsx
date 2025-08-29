@@ -1,16 +1,17 @@
 import MobileLayout from "@/layouts/mobile-layout";
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { ModalLink } from '@inertiaui/modal-react';
 import { Button } from '@/components/ui/button';
 
-// Dashboard Header Component
 const DashboardHeader = () => {
+    const { auth } = usePage().props;
+
     return (
         <div className="rounded-b-3xl bg-gradient-to-r from-green-500 to-green-600 px-3 py-4 text-white sm:px-4 sm:py-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                     <Link
-                        href="/dashboard"
+                        href={route('account.dashboard', auth?.account?.id)}
                         className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 p-2 transition-colors hover:bg-white/30"
                     >
                         <img src="/logo-icon.svg" alt="Catet Dulu Logo" className="h-full w-full object-contain" />
@@ -50,7 +51,7 @@ export default function Dashboard({ account }) {
                     </div>
 
                     <div className="space-y-4">
-                        <ModalLink href="/modal/sample">
+                        <ModalLink href={route('modal.sample', { account: account?.id })}>
                             <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
                                 Buka Modal Contoh
                             </Button>

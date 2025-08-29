@@ -31,7 +31,6 @@ class AccountController extends Controller
         ])->baseRoute('account.index');
     }
 
-
     public function confirmDelete(Account $account)
     {
         return Inertia::modal('Account/Delete', [

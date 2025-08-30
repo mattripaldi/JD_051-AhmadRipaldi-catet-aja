@@ -1,5 +1,5 @@
 import MobileLayout from '@/layouts/mobile-layout';
-import { formatRelativeTime } from '@/utils/formatters';
+import { formatRelativeTime, formatSimpleCurrency } from '@/utils/formatters';
 import { getCategoryIconSimple, getCategoryColorSimple, getCategoryIconColorSimple } from '@/utils/transaction-helpers';
 import { Head, usePage, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
@@ -236,7 +236,7 @@ export default function NewIncome({ transactions: initialTransactions, filters, 
                                                 <div className="flex items-center space-x-3 text-right">
                                                     <div>
                                                         <p className={`font-semibold text-green-600 text-sm`}>
-                                                            +{transaction.amount} {filters.currency ?? 'IDR'}
+                                                            {formatSimpleCurrency(transaction.amount, filters.currency ?? 'IDR')}
                                                         </p>
                                                     </div>
                                                     <div>

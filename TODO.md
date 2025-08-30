@@ -1,5 +1,5 @@
 TODO Priority:
-    1. Dashboard (just need to update to not using currency, and fix NaN)
+    1. Dashboard (Done, need bit adjustment)
     2. Income header statistic
     3. Outcome header statistic
     4. Make AI Categorize work

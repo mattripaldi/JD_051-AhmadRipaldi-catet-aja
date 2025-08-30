@@ -16,9 +16,11 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id')->index();
             $table->unsignedBigInteger('account_id')->index();
             $table->unsignedBigInteger('category_id')->nullable()->index();
+            $table->unsignedBigInteger('currency_id')->nullable()->index();
             $table->text('description')->nullable();
             $table->timestamp('transaction_date');
             $table->decimal('amount', 20, 2);
+            $table->string('categorization_status')->default('pending');
             $table->timestamps();
         });
     }

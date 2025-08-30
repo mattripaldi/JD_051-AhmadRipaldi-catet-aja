@@ -9,6 +9,7 @@ import { Link } from '@inertiajs/react';
 import { ModalLink } from '@inertiaui/modal-react';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import {
+    Check,
     Edit,
     MoreVertical,
     Search,
@@ -25,6 +26,9 @@ export default function IndexOutcome({ transactions: initialTransactions, filter
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const inputRef = useRef(null);
     const searchTimeoutRef = useRef(null);
+
+    // Local currency selection state for immediate UI updates
+    const [selectedCurrencyId, setSelectedCurrencyId] = useState(filters.currency_id || null);
 
     // Use server-filtered transactions
     const filteredTransactions = initialTransactions.data || [];
@@ -77,6 +81,11 @@ export default function IndexOutcome({ transactions: initialTransactions, filter
         setSearchQuery(filters.search || '');
     }, [filters.search]);
 
+    // Update local currency state when filters change (e.g., from URL)
+    useEffect(() => {
+        setSelectedCurrencyId(filters.currency_id || null);
+    }, [filters.currency_id]);
+
 
 
 
@@ -116,45 +125,64 @@ export default function IndexOutcome({ transactions: initialTransactions, filter
                                         size="sm"
                                         className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-medium"
                                     >
-                                        {filters.currency ?? 'IDR'} ▼
+                                        {(() => {
+                                            if (currencies && currencies.length > 0) {
+                                                const selectedCurrency = selectedCurrencyId ?
+                                                    currencies.find(c => c.id === Number(selectedCurrencyId)) :
+                                                    (currencies.find(c => c.name === 'IDR') || currencies[0]);
+                                                return selectedCurrency ? selectedCurrency.name : 'IDR';
+                                            }
+                                            return 'IDR';
+                                        })()} ▼
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-32">
                                     {currencies && currencies.length > 0 ? (
-                                        currencies.map((currency) => (
-                                            <DropdownMenuItem
-                                                key={currency.name}
-                                                className="cursor-pointer"
-                                                onClick={() => {
-                                                    const currentParams = new URLSearchParams(window.location.search);
-                                                    currentParams.set('currency', currency.name);
-                                                    router.get(window.location.pathname, Object.fromEntries(currentParams), {
-                                                        preserveState: true,
-                                                        replace: true,
-                                                    });
-                                                }}
-                                            >
-                                                {currency.name}
-                                            </DropdownMenuItem>
-                                        ))
+                                        currencies.map((currency) => {
+                                            const isSelected = selectedCurrencyId ?
+                                                currency.id === Number(selectedCurrencyId) :
+                                                (currency.name === 'IDR' || currencies[0]?.id === currency.id);
+                                            return (
+                                                <DropdownMenuItem
+                                                    key={currency.id}
+                                                    className="cursor-pointer flex items-center justify-between"
+                                                    onClick={() => {
+                                                        // Update local state immediately for instant UI feedback
+                                                        setSelectedCurrencyId(currency.id.toString());
+
+                                                        const currentParams = new URLSearchParams(window.location.search);
+                                                        currentParams.set('currency_id', currency.id);
+                                                        router.get(window.location.pathname, Object.fromEntries(currentParams), {
+                                                            preserveState: true,
+                                                            replace: true,
+                                                        });
+                                                    }}
+                                                >
+                                                    <span>{currency.name}</span>
+                                                    {isSelected && <Check size={16} className="text-blue-600" />}
+                                                </DropdownMenuItem>
+                                            );
+                                        })
                                     ) : (
-                                        // Fallback to default currencies if no user currencies exist
-                                        ['IDR', 'USD', 'EUR'].map((currencyCode) => (
-                                            <DropdownMenuItem
-                                                key={currencyCode}
-                                                className="cursor-pointer"
-                                                onClick={() => {
-                                                    const currentParams = new URLSearchParams(window.location.search);
-                                                    currentParams.set('currency', currencyCode);
-                                                    router.get(window.location.pathname, Object.fromEntries(currentParams), {
-                                                        preserveState: true,
-                                                        replace: true,
-                                                    });
-                                                }}
-                                            >
-                                                {currencyCode}
-                                            </DropdownMenuItem>
-                                        ))
+                                        // Fallback to default currency if no user currencies exist
+                                        <DropdownMenuItem
+                                            key="IDR"
+                                            className="cursor-pointer flex items-center justify-between"
+                                            onClick={() => {
+                                                // Update local state immediately for instant UI feedback
+                                                setSelectedCurrencyId(null);
+
+                                                const currentParams = new URLSearchParams(window.location.search);
+                                                currentParams.delete('currency_id');
+                                                router.get(window.location.pathname, Object.fromEntries(currentParams), {
+                                                    preserveState: true,
+                                                    replace: true,
+                                                });
+                                            }}
+                                        >
+                                            <span>IDR</span>
+                                            {!selectedCurrencyId && <Check size={16} className="text-blue-600" />}
+                                        </DropdownMenuItem>
                                     )}
                                 </DropdownMenuContent>
                             </DropdownMenu>

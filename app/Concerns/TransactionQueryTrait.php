@@ -4,6 +4,7 @@ namespace App\Concerns;
 
 use App\Models\Income;
 use App\Models\Outcome;
+use App\Models\Currency;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
@@ -11,34 +12,34 @@ trait TransactionQueryTrait
 {
     /**
      * Build base transaction query with filters and eager loading
-     * 
+     *
      * @param string $type
      * @param int $year
      * @param int $month
      * @param string $mode
-     * @param string $currency
+     * @param int|null $currencyId
      * @param string $search
      * @param string $category
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    protected function buildTransactionQuery($type, $year, $month, $mode, $currency, $search = '', $category = null)
+    protected function buildTransactionQuery($type, $year, $month, $mode, $currencyId, $search = '', $category = null)
     {
         $model = $type === 'income' ? Income::class : Outcome::class;
         $query = $model::query()
-            ->with('category') // Eager load category to prevent N+1 queries
+            ->with(['category', 'currency']) // Eager load category and currency to prevent N+1 queries
             ->where('user_id', Auth::id())
             ->whereYear('transaction_date', $year);
-            
+
         // Add month filtering only if mode is 'month'
         if ($mode === 'month') {
             $query->whereMonth('transaction_date', $month);
         }
-        
+
         $query->orderBy('transaction_date', 'desc')
               ->orderBy('id', 'desc');
-            
+
         // Apply currency filtering
-        $this->applyCurrencyFilter($query, $currency);
+        $this->applyCurrencyIdFilter($query, $currencyId);
             
         // Add search functionality
         if (!empty($search)) {
@@ -57,15 +58,15 @@ trait TransactionQueryTrait
     
     /**
      * Get optimized transaction totals for calculations (using aggregation)
-     * 
+     *
      * @param string $type
      * @param int $year
      * @param int $month
      * @param string $mode
-     * @param string $currency
+     * @param int|null $currencyId
      * @return array
      */
-    protected function getOptimizedTransactionTotals($type, $year, $month, $mode, $currency)
+    protected function getOptimizedTransactionTotals($type, $year, $month, $mode, $currencyId)
     {
         $model = $type === 'income' ? Income::class : Outcome::class;
         $query = $model::query()
@@ -79,7 +80,7 @@ trait TransactionQueryTrait
         }
             
         // Apply currency filtering for stats calculation
-        $this->applyCurrencyFilter($query, $currency);
+        $this->applyCurrencyIdFilter($query, $currencyId);
         
         $result = $query->first();
 
@@ -91,19 +92,19 @@ trait TransactionQueryTrait
     
     /**
      * Get all transactions for calculations (without pagination) - kept for backward compatibility
-     * 
+     *
      * @param string $type
      * @param int $year
      * @param int $month
      * @param string $mode
-     * @param string $currency
+     * @param int|null $currencyId
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    protected function getAllTransactionsForCalculations($type, $year, $month, $mode, $currency)
+    protected function getAllTransactionsForCalculations($type, $year, $month, $mode, $currencyId)
     {
         $model = $type === 'income' ? Income::class : Outcome::class;
         $query = $model::query()
-            ->select(['amount', 'currency', 'transaction_date']) // Only select needed columns
+            ->select(['amount', 'currency_id', 'transaction_date']) // Only select needed columns
             ->where('user_id', Auth::id())
             ->whereYear('transaction_date', $year);
             
@@ -113,21 +114,21 @@ trait TransactionQueryTrait
         }
             
         // Apply currency filtering for stats calculation
-        $this->applyCurrencyFilter($query, $currency);
+        $this->applyCurrencyIdFilter($query, $currencyId);
         
         return $query->get();
     }
     
     /**
      * Get optimized previous period totals for comparison
-     * 
+     *
      * @param int $year
      * @param int $month
      * @param string $mode
-     * @param string $currency
+     * @param int|null $currencyId
      * @return array
      */
-    protected function getOptimizedPreviousPeriodTotals($year, $month, $mode, $currency, $type)
+    protected function getOptimizedPreviousPeriodTotals($year, $month, $mode, $currencyId, $type)
     {
         if ($mode === 'month') {
             $previousMonth = $month == 1 ? 12 : $month - 1;
@@ -148,10 +149,10 @@ trait TransactionQueryTrait
         if ($mode === 'month') {
             $query->whereMonth('transaction_date', $previousMonth);
         }
-            
+
         // Apply same currency filtering for previous period
-        $this->applyCurrencyFilter($query, $currency);
-        
+        $this->applyCurrencyIdFilter($query, $currencyId);
+
         $result = $query->first();
 
         if ($type === 'income') {
@@ -169,14 +170,14 @@ trait TransactionQueryTrait
     
     /**
      * Get previous period transactions for comparison - kept for backward compatibility
-     * 
+     *
      * @param int $year
      * @param int $month
      * @param string $mode
-     * @param string $currency
+     * @param int|null $currencyId
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    protected function getPreviousPeriodTransactions($year, $month, $mode, $currency, $type)
+    protected function getPreviousPeriodTransactions($year, $month, $mode, $currencyId, $type)
     {
         if ($mode === 'month') {
             $previousMonth = $month == 1 ? 12 : $month - 1;
@@ -189,7 +190,7 @@ trait TransactionQueryTrait
 
         $model = $type === 'income' ? Income::class : Outcome::class;
         $query = $model::query()
-            ->select(['amount', 'currency', 'transaction_date']) // Only select needed columns
+            ->select(['amount', 'currency_id', 'transaction_date']) // Only select needed columns
             ->where('user_id', Auth::id())
             ->whereYear('transaction_date', $previousYear);
             
@@ -197,31 +198,27 @@ trait TransactionQueryTrait
         if ($mode === 'month') {
             $query->whereMonth('transaction_date', $previousMonth);
         }
-            
+
         // Apply same currency filtering for previous period
-        $this->applyCurrencyFilter($query, $currency);
-        
+        $this->applyCurrencyIdFilter($query, $currencyId);
+
         return $query->get();
     }
     
     /**
      * Apply currency filtering to query
-     * 
+     *
      * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string $currency
+     * @param int|null $currencyId
      * @return void
      */
-    protected function applyCurrencyFilter($query, $currency)
+    protected function applyCurrencyIdFilter($query, $currencyId)
     {
-        if ($currency && $currency !== 'IDR') {
-            $query->where('currency', $currency);
+        if ($currencyId) {
+            $query->where('currency_id', $currencyId);
         } else {
-            // For 'IDR', include both null and 'Rp' currency transactions (legacy support)
-            $query->where(function($q) {
-                $q->where('currency', 'Rp')
-                  ->orWhere('currency', 'IDR')
-                  ->orWhereNull('currency');
-            });
+            // If no currency_id specified, include all transactions (for backward compatibility)
+            // You might want to add logic here to filter by default currency if needed
         }
     }
     
@@ -230,11 +227,11 @@ trait TransactionQueryTrait
      * Converts foreign currencies to IDR when viewing in IDR mode
      *
      * @param \Illuminate\Database\Eloquent\Collection $transactions
-     * @param string $currency
+     * @param int|null $currencyId
      * @param string $type
      * @return array
      */
-    protected function calculateTotalsFromTransactions($transactions, $currency, $type = 'income')
+    protected function calculateTotalsFromTransactions($transactions, $currencyId, $type = 'income')
     {
         $totalRevenue = 0;
         $totalOutcome = 0;
@@ -243,8 +240,20 @@ trait TransactionQueryTrait
             $amount = $transaction->amount;
 
             // Convert any foreign currency to IDR if we're viewing IDR and transaction is in foreign currency
-            if ($currency === 'IDR' && $transaction->currency && $transaction->currency !== 'IDR' && $transaction->currency !== 'Rp') {
-                $amount = $this->currencyService->convertToIdrForDate($amount, $transaction->currency, $transaction->transaction_date, Auth::id());
+            if ($currencyId && $transaction->currency && $transaction->currency->name !== 'IDR') {
+                // Get the IDR currency ID for the user
+                $idrCurrencyId = Currency::where('user_id', Auth::id())
+                    ->where('name', 'IDR')
+                    ->value('id');
+
+                if ($idrCurrencyId) {
+                    $amount = $this->currencyService->convertCurrency(
+                        $amount,
+                        $transaction->currency_id,
+                        $idrCurrencyId,
+                        Auth::id()
+                    );
+                }
             }
 
             // Since this method is called with transactions of a specific type,

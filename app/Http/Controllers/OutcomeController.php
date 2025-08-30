@@ -11,10 +11,11 @@ use App\Jobs\CategorizeTransactionJob;
 use Illuminate\Support\Facades\Auth;
 use App\Concerns\TransactionQueryTrait;
 use App\Concerns\DashboardCalculationsTrait;
+use App\Concerns\CurrencyTrait;
 
 class OutcomeController extends Controller
 {
-    use TransactionQueryTrait, DashboardCalculationsTrait {
+    use TransactionQueryTrait, DashboardCalculationsTrait, CurrencyTrait {
         DashboardCalculationsTrait::calculatePercentageChange insteadof TransactionQueryTrait;
     }
 
@@ -29,31 +30,23 @@ class OutcomeController extends Controller
     {
         // Get available currencies for the user
         $currencies = Auth::user()->currencies()
-                        ->select('name', 'symbol')
+                        ->select('id', 'name', 'symbol')
                         ->orderBy('name')
                         ->get()
                         ->map(function ($currency) {
                             return [
+                                'id' => $currency->id,
                                 'name' => $currency->name,
                                 'symbol' => $currency->symbol,
                                 'display' => $currency->name . ' (' . $currency->symbol . ')'
                             ];
                         });
-        
-        // Add IDR as default if not exists
-        if ($currencies->where('name', 'IDR')->isEmpty()) {
-            $currencies->prepend([
-                'name' => 'IDR',
-                'symbol' => 'Rp',
-                'display' => 'IDR (Rp)'
-            ]);
-        }
 
         return Inertia::modal('Outcomes/Create', [
             'filters' => [
                 'year' => (int) Carbon::now()->year,
                 'month' => (int) Carbon::now()->month,
-                'currency' => 'IDR',
+                'currency_id' => null, // Will default to IDR
             ],
             'currencies' => $currencies,
         ])->baseRoute('outcome.index', ['account' => $accountId]);
@@ -63,29 +56,21 @@ class OutcomeController extends Controller
     {
         $year = $request->query('year', Carbon::now()->year);
         $month = $request->query('month', Carbon::now()->month);
-        $currency = $request->query('currency', 'IDR');
+        $currencyId = $request->query('currency_id', null);
 
         // Get available currencies for the user
         $currencies = Auth::user()->currencies()
-                        ->select('name', 'symbol')
+                        ->select('id', 'name', 'symbol')
                         ->orderBy('name')
                         ->get()
                         ->map(function ($currency) {
                             return [
+                                'id' => $currency->id,
                                 'name' => $currency->name,
                                 'symbol' => $currency->symbol,
                                 'display' => $currency->name . ' (' . $currency->symbol . ')'
                             ];
                         });
-        
-        // Add IDR as default if not exists
-        if ($currencies->where('name', 'IDR')->isEmpty()) {
-            $currencies->prepend([
-                'name' => 'IDR',
-                'symbol' => 'Rp',
-                'display' => 'IDR (Rp)'
-            ]);
-        }
 
         return Inertia::modal('Outcomes/Edit', [
             'transaction' => [
@@ -94,12 +79,12 @@ class OutcomeController extends Controller
                 'amount' => (float) $outcome->amount,
                 'date' => $outcome->transaction_date,
                 'transaction_date' => $outcome->transaction_date,
-                'currency' => $outcome->currency ?? 'IDR',
+                'currency_id' => $outcome->currency_id,
             ],
             'filters' => [
                 'year' => (int) $year,
                 'month' => (int) $month,
-                'currency' => $currency,
+                'currency_id' => $currencyId,
             ],
             'currencies' => $currencies,
         ])->baseRoute('outcome.index', ['account' => $accountId]);
@@ -114,34 +99,34 @@ class OutcomeController extends Controller
                 'description' => $outcome->description,
                 'amount' => (float) $outcome->amount,
                 'date' => $outcome->transaction_date,
-                'currency' => $outcome->currency ?? 'IDR',
+                'currency_id' => $outcome->currency_id,
             ],
         ])->baseRoute('outcome.index', ['account' => $accountId]);
     }
 
-    public function index(Request $request)
+    public function index($accountId, Request $request)
     {
         $year = $request->query('year', Carbon::now()->year);
         $month = $request->query('month', Carbon::now()->month);
         $mode = $request->query('mode', 'month');
-        $currency = $request->query('currency', 'IDR');
+        $currencyId = $request->query('currency_id', $this->getDefaultCurrencyId($accountId));
         $search = $request->query('search', '');
         $category = $request->query('category', null);
-        
+
         // Get paginated transactions with optimized query
-        $query = $this->buildTransactionQuery('outcome', $year, $month, $mode, $currency, $search, $category)
-            ->select(['id', 'user_id', 'description', 'amount', 'transaction_date', 'currency', 'category_id', 'categorization_status']);
+        $query = $this->buildTransactionQuery('outcome', $year, $month, $mode, $currencyId, $search, $category)
+            ->select(['id', 'user_id', 'description', 'amount', 'transaction_date', 'currency_id', 'category_id', 'categorization_status']);
         $perPage = 10;
         $data = $query->paginate($perPage)->withQueryString();
-        
+
         // Get all transactions for calculations
-        $allTransactions = $this->getAllTransactionsForCalculations('outcome', $year, $month, $mode, $currency);
-        $previousPeriodTransactions = $this->getPreviousPeriodTransactions($year, $month, $mode, $currency, 'outcome');
+        $allTransactions = $this->getAllTransactionsForCalculations('outcome', $year, $month, $mode, $currencyId);
+        $previousPeriodTransactions = $this->getPreviousPeriodTransactions($year, $month, $mode, $currencyId, 'outcome');
 
         // Calculate totals using trait
-        $currentTotals = $this->calculateTotalsFromTransactions($allTransactions, $currency, 'outcome');
-        $previousTotals = $this->calculateTotalsFromTransactions($previousPeriodTransactions, $currency, 'outcome');
-        
+        $currentTotals = $this->calculateTotalsFromTransactions($allTransactions, $currencyId, 'outcome');
+        $previousTotals = $this->calculateTotalsFromTransactions($previousPeriodTransactions, $currencyId, 'outcome');
+
         // Calculate percentage changes using trait
         $revenueChange = $this->calculatePercentageChange($currentTotals['totalRevenue'], $previousTotals['totalRevenue']);
         $outcomeChange = $this->calculatePercentageChange($currentTotals['totalOutcome'], $previousTotals['totalOutcome']);
@@ -156,7 +141,9 @@ class OutcomeController extends Controller
                     'type' => 'outcome',
                     'date' => $transaction->transaction_date,
                     'transaction_date' => $transaction->transaction_date,
-                    'currency' => $transaction->currency ?? 'IDR',
+                    'currency_id' => $transaction->currency_id,
+                    'currency' => $transaction->currency ? $transaction->currency->name : 'IDR',
+                    'currency_symbol' => $transaction->currency ? $transaction->currency->symbol : 'Rp',
                     'category' => $transaction->category ? $transaction->category->name : null,
                     'category_icon' => $transaction->category ? $transaction->category->icon : 'dollar-sign',
                     'categorization_status' => $transaction->categorization_status ?? 'completed',
@@ -174,20 +161,24 @@ class OutcomeController extends Controller
             ],
         ];
 
-        // Calculate currency breakdown based on user's actual currencies
+                // Calculate currency breakdown based on user's actual currencies
         $userCurrencies = $this->getUserCurrencies();
         $currencyBreakdown = [];
-        
+
+        // Get currency mapping for breakdown calculations
+        $currencyMapping = Auth::user()->currencies()->pluck('id', 'name')->toArray();
+
         foreach ($userCurrencies as $userCurrency) {
+            $currMap = $currencyMapping[$userCurrency] ?? null;
             $currencyBreakdown[$userCurrency] = [
-                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'outcome', $userCurrency, $mode)
+                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'outcome', $currMap, $mode)
             ];
         }
-        
+
         // Fallback to IDR if no currencies found
         if (empty($currencyBreakdown)) {
             $currencyBreakdown['IDR'] = [
-                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'outcome', 'IDR', $mode)
+                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'outcome', null, $mode)
             ];
         }
 
@@ -204,20 +195,21 @@ class OutcomeController extends Controller
 
         // Get exchange rates for all user currencies to IDR for the current month
         $currencyRates = $this->currencyService->getExchangeRatesForUserCurrencies(
-            array_keys($currencyBreakdown), 
-            Auth::id(), 
-            null, 
-            $year, 
+            array_keys($currencyBreakdown),
+            Auth::id(),
+            null,
+            $year,
             $month
         );
 
         // Get available currencies for the user
         $currencies = Auth::user()->currencies()
-                        ->select('name', 'symbol')
+                        ->select('id', 'name', 'symbol')
                         ->orderBy('name')
                         ->get()
                         ->map(function ($currency) {
                             return [
+                                'id' => $currency->id,
                                 'name' => $currency->name,
                                 'symbol' => $currency->symbol,
                                 'display' => $currency->name . ' (' . $currency->symbol . ')'
@@ -232,7 +224,7 @@ class OutcomeController extends Controller
                 'mode' => $mode,
                 'search' => $search,
                 'category' => $category,
-                'currency' => $currency,
+                'currency_id' => $currencyId,
             ],
             'stats' => [
                 'totalRevenue' => $currentTotals['totalRevenue'],
@@ -255,6 +247,7 @@ class OutcomeController extends Controller
             'description' => 'required|string',
             'amount' => 'required|numeric|min:0',
             'date' => 'required|date',
+            'currency_id' => 'nullable|integer|exists:currencies,id',
         ]);
 
         $transaction = Outcome::create([
@@ -263,10 +256,10 @@ class OutcomeController extends Controller
             'amount' => $request->amount,
             'description' => $request->description,
             'transaction_date' => $request->date,
-            'currency' => $request->currency ?? 'IDR'
+            'currency_id' => $request->currency_id
         ]);
 
-        // // Temporary Disable 
+        // // Temporary Disable
         // // Dispatch job to categorize the transaction
         // CategorizeTransactionJob::dispatch($transaction);
 
@@ -274,7 +267,7 @@ class OutcomeController extends Controller
         $redirectParams = [];
         if ($request->year) $redirectParams['year'] = $request->year;
         if ($request->month) $redirectParams['month'] = $request->month;
-        if ($request->currency && $request->currency !== 'IDR') $redirectParams['currency'] = $request->currency;
+        if ($request->currency_id) $redirectParams['currency_id'] = $request->currency_id;
 
         return redirect()->route('outcome.index', ['account' => $accountId] + $redirectParams);
     }
@@ -285,29 +278,30 @@ class OutcomeController extends Controller
             'description' => 'required|string',
             'amount' => 'required|numeric|min:0',
             'date' => 'required|date',
+            'currency_id' => 'nullable|integer|exists:currencies,id',
         ]);
-        
+
         // Check if description has changed
         $descriptionChanged = $outcome->description !== $request->description;
-        
+
         $outcome->update([
             'amount' => $request->amount,
             'description' => $request->description,
             'transaction_date' => $request->date,
-            'currency' => $request->currency
+            'currency_id' => $request->currency_id
         ]);
-        
-        // // Temporary Disable 
+
+        // // Temporary Disable
         // // If description changed, dispatch job to recategorize the transaction
         // if ($descriptionChanged) {
         //     CategorizeTransactionJob::dispatch($outcome, true);
         // }
-        
+
         // Preserve current filter parameters
         $redirectParams = [];
         if ($request->year) $redirectParams['year'] = $request->year;
         if ($request->month) $redirectParams['month'] = $request->month;
-        if ($request->currency && $request->currency !== 'IDR') $redirectParams['currency'] = $request->currency;
+        if ($request->currency_id) $redirectParams['currency_id'] = $request->currency_id;
 
         return redirect()->route('outcome.index', ['account' => $accountId] + $redirectParams);
     }
@@ -315,12 +309,12 @@ class OutcomeController extends Controller
     public function destroy(Request $request, $accountId, Outcome $outcome)
     {
         $outcome->delete();
-        
+
         // Preserve current filter parameters
         $redirectParams = [];
         if ($request->year) $redirectParams['year'] = $request->year;
         if ($request->month) $redirectParams['month'] = $request->month;
-        if ($request->currency && $request->currency !== 'IDR') $redirectParams['currency'] = $request->currency;
+        if ($request->currency_id) $redirectParams['currency_id'] = $request->currency_id;
 
         return redirect()->route('outcome.index', ['account' => $accountId] + $redirectParams);
     }

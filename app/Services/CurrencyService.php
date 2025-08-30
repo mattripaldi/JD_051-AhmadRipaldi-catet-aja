@@ -27,13 +27,29 @@ class CurrencyService
      * Convert amount from one currency to another using the latest rate
      *
      * @param float $amount
+     * @param int $fromCurrencyId
+     * @param int $toCurrencyId
+     * @param int $userId
+     * @param int|null $accountId
+     * @return float
+     */
+    public function convertCurrency(float $amount, int $fromCurrencyId, int $toCurrencyId, int $userId, ?int $accountId = null): float
+    {
+        $rate = $this->getExchangeRateById($fromCurrencyId, $toCurrencyId, $userId, $accountId);
+        return $amount * $rate;
+    }
+
+    /**
+     * Convert amount from one currency to another using currency names (backward compatibility)
+     *
+     * @param float $amount
      * @param string $fromCurrency
      * @param string $toCurrency
      * @param int $userId
      * @param int|null $accountId
      * @return float
      */
-    public function convertCurrency(float $amount, string $fromCurrency, string $toCurrency, int $userId, ?int $accountId = null): float
+    public function convertCurrencyByName(float $amount, string $fromCurrency, string $toCurrency, int $userId, ?int $accountId = null): float
     {
         $rate = $this->getExchangeRate($fromCurrency, $toCurrency, $userId, $accountId);
         return $amount * $rate;
@@ -205,6 +221,29 @@ class CurrencyService
         return $this->getExchangeRateForMonth($fromCurrency, 'IDR', $userId, $accountId, $year, $month);
     }
     
+    /**
+     * Get the latest exchange rate between two currencies by ID
+     * Cached for 1 day
+     *
+     * @param int $fromCurrencyId
+     * @param int $toCurrencyId
+     * @param int $userId
+     * @param int|null $accountId
+     * @return float
+     */
+    public function getExchangeRateById(int $fromCurrencyId, int $toCurrencyId, int $userId, ?int $accountId = null): float
+    {
+        // Get currency names from IDs
+        $fromCurrency = Currency::where('id', $fromCurrencyId)->where('user_id', $userId)->value('name');
+        $toCurrency = Currency::where('id', $toCurrencyId)->where('user_id', $userId)->value('name');
+
+        if (!$fromCurrency || !$toCurrency) {
+            return 1.0; // Return 1.0 if currencies not found
+        }
+
+        return $this->getExchangeRate($fromCurrency, $toCurrency, $userId, $accountId);
+    }
+
     /**
      * Get the latest exchange rate between two currencies
      * Cached for 1 day

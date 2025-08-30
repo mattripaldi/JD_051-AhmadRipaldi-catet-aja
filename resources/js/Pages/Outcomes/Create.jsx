@@ -10,11 +10,14 @@ import { useToastContext } from '@/components/ui/toast-provider';
 export default function CreateOutcome({ filters, currencies }) {
     const { auth } = usePage().props;
 
+    // Find IDR currency ID as default
+    const defaultCurrencyId = currencies?.find(c => c.name === 'IDR')?.id || null;
+
     const { data, setData, post, processing, errors } = useForm({
         description: '',
         amount: '',
         date: new Date().toISOString().split('T')[0],
-        currency: filters?.currency || 'IDR',
+        currency_id: filters?.currency_id || defaultCurrencyId,
     });
 
     const { success } = useToastContext();
@@ -86,15 +89,15 @@ export default function CreateOutcome({ filters, currencies }) {
                         Jumlah *
                     </Label>
                     <div className="flex">
-                        <Select value={data.currency} onValueChange={(value) => setData('currency', value)}>
+                        <Select value={data.currency_id?.toString()} onValueChange={(value) => setData('currency_id', parseInt(value) || null)}>
                             <SelectTrigger className="w-24 rounded-r-none border-gray-200 focus:border-gray-400 focus:ring-gray-400">
                                 <SelectValue>
-                                    {currencies?.find(c => c.name === data.currency)?.symbol || 'Rp'}
+                                    {currencies?.find(c => c.id === data.currency_id)?.symbol || 'Rp'}
                                 </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                                 {currencies?.map((currency) => (
-                                    <SelectItem key={currency.name} value={currency.name}>
+                                    <SelectItem key={currency.id} value={currency.id.toString()}>
                                         {currency.display}
                                     </SelectItem>
                                 ))}
@@ -112,7 +115,7 @@ export default function CreateOutcome({ filters, currencies }) {
                         />
                     </div>
                     {errors.amount && <p className="text-sm text-red-600 mt-1">{errors.amount}</p>}
-                    {errors.currency && <p className="text-sm text-red-600 mt-1">{errors.currency}</p>}
+                    {errors.currency_id && <p className="text-sm text-red-600 mt-1">{errors.currency_id}</p>}
                 </div>
 
                 <div className="space-y-2">

@@ -1,10 +1,11 @@
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Check } from 'lucide-react';
 
 // Generate year and month options
 const currentYear = new Date().getFullYear();
@@ -62,33 +63,61 @@ export function PeriodSelector({ filters, onModeChange, onYearChange, onMonthCha
             {filters.mode !== 'all' && (
                 <div className="flex items-center space-x-2">
                     {/* Year Dropdown */}
-                    <Select value={filters.year.toString()} onValueChange={(value) => onYearChange(parseInt(value))}>
-                        <SelectTrigger className="h-auto rounded-xl px-3 py-2 text-white bg-white/20 hover:bg-white/30 border-0 focus:ring-0 focus:ring-offset-0">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border-0 shadow-lg">
-                            {yearOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value.toString()} className="focus:bg-blue-50">
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors duration-300 text-sm font-medium border-0"
+                            >
+                                {filters.year} ▼
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-24">
+                            {yearOptions.map((option) => {
+                                const isSelected = option.value === filters.year;
+                                return (
+                                    <DropdownMenuItem
+                                        key={option.value}
+                                        className="cursor-pointer flex items-center justify-between"
+                                        onClick={() => onYearChange(option.value)}
+                                    >
+                                        <span>{option.label}</span>
+                                        {isSelected && <Check size={16} className="text-blue-600" />}
+                                    </DropdownMenuItem>
+                                );
+                            })}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
                     {/* Month Dropdown - only show in month mode */}
                     {filters.mode === 'month' && (
-                        <Select value={filters.month.toString()} onValueChange={(value) => onMonthChange(parseInt(value))}>
-                            <SelectTrigger className="h-auto rounded-xl px-3 py-2 text-white bg-white/20 hover:bg-white/30 border-0 focus:ring-0 focus:ring-offset-0">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white border-0 shadow-lg">
-                                {months.map((month) => (
-                                    <SelectItem key={month.value} value={month.value.toString()} className="focus:bg-blue-50">
-                                        {month.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors duration-300 text-sm font-medium border-0"
+                                >
+                                    {months.find(m => m.value === filters.month)?.label || 'Januari'} ▼
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-32">
+                                {months.map((month) => {
+                                    const isSelected = month.value === filters.month;
+                                    return (
+                                        <DropdownMenuItem
+                                            key={month.value}
+                                            className="cursor-pointer flex items-center justify-between"
+                                            onClick={() => onMonthChange(month.value)}
+                                        >
+                                            <span>{month.label}</span>
+                                            {isSelected && <Check size={16} className="text-blue-600" />}
+                                        </DropdownMenuItem>
+                                    );
+                                })}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     )}
                 </div>
             )}

@@ -46,14 +46,27 @@ class DashboardController extends Controller
         $currencyBreakdown = $this->getCurrencyBreakdown($year, $month, $mode, $account->id);
         $availableCurrencies = $this->getUserCurrencies($account->id);
 
+        // Get exchange rates for frontend currency conversion
+        $exchangeRates = [];
+        foreach ($availableCurrencies as $currency) {
+            if ($currency !== 'IDR') {
+                $rate = $this->currencyService->getToIdrRate($currency, Auth::id(), $account->id);
+                $exchangeRates[strtolower($currency) . 'ToIdrRate'] = $rate;
+            }
+        }
+
+        // Get default currency ID (IDR for now, but can be made configurable)
+        $defaultCurrencyId = Auth::user()->currencies()
+            ->where('name', 'IDR')
+            ->value('id') ?? null;
+
         // Calculate stats based on mode using optimized methods
-        $defaultCurrency = 'IDR';
         if ($mode === 'month') {
-            $stats = $this->calculateMonthlyStats($year, $month, $defaultCurrency, $account->id);
+            $stats = $this->calculateMonthlyStats($year, $month, $defaultCurrencyId, $account->id);
         } elseif ($mode === 'year') {
-            $stats = $this->calculateYearlyStats($year, $defaultCurrency, $account->id);
+            $stats = $this->calculateYearlyStats($year, $defaultCurrencyId, $account->id);
         } else {
-            $stats = $this->calculateAllTimeStats($defaultCurrency, $account->id);
+            $stats = $this->calculateAllTimeStats($defaultCurrencyId, $account->id);
         }
 
         // Ensure stats has all required keys with defaults
@@ -72,8 +85,8 @@ class DashboardController extends Controller
         ], $stats ?? []);
 
         // Get 10 most recent transactions (combined incomes and outcomes)
-        $recentIncomes = Income::with('category')
-            ->select(['id', 'user_id', 'account_id', 'description', 'amount', 'transaction_date', 'currency', 'category_id', 'categorization_status'])
+        $recentIncomes = Income::with(['category', 'currency'])
+            ->select(['id', 'user_id', 'account_id', 'description', 'amount', 'transaction_date', 'currency_id', 'category_id', 'categorization_status'])
             ->where('user_id', Auth::id())
             ->where('account_id', $account->id)
             ->orderBy('transaction_date', 'desc')
@@ -88,7 +101,9 @@ class DashboardController extends Controller
                     'type' => 'income',
                     'date' => $income->transaction_date,
                     'transaction_date' => $income->transaction_date,
-                    'currency' => $income->currency ?? 'IDR',
+                    'currency_id' => $income->currency_id,
+                    'currency' => $income->currency ? $income->currency->name : 'IDR',
+                    'currency_symbol' => $income->currency ? $income->currency->symbol : 'Rp',
                     'category' => $income->category ? $income->category->name : null,
                     'category_icon' => $income->category ? $income->category->icon : 'dollar-sign',
                     'categorization_status' => $income->categorization_status ?? 'completed',
@@ -96,8 +111,8 @@ class DashboardController extends Controller
                 ];
             });
 
-        $recentOutcomes = Outcome::with('category')
-            ->select(['id', 'user_id', 'account_id', 'description', 'amount', 'transaction_date', 'currency', 'category_id', 'categorization_status'])
+        $recentOutcomes = Outcome::with(['category', 'currency'])
+            ->select(['id', 'user_id', 'account_id', 'description', 'amount', 'transaction_date', 'currency_id', 'category_id', 'categorization_status'])
             ->where('user_id', Auth::id())
             ->where('account_id', $account->id)
             ->orderBy('transaction_date', 'desc')
@@ -112,7 +127,9 @@ class DashboardController extends Controller
                     'type' => 'outcome',
                     'date' => $outcome->transaction_date,
                     'transaction_date' => $outcome->transaction_date,
-                    'currency' => $outcome->currency ?? 'IDR',
+                    'currency_id' => $outcome->currency_id,
+                    'currency' => $outcome->currency ? $outcome->currency->name : 'IDR',
+                    'currency_symbol' => $outcome->currency ? $outcome->currency->symbol : 'Rp',
                     'category' => $outcome->category ? $outcome->category->name : null,
                     'category_icon' => $outcome->category ? $outcome->category->icon : 'dollar-sign',
                     'categorization_status' => $outcome->categorization_status ?? 'completed',
@@ -127,17 +144,16 @@ class DashboardController extends Controller
             ->values();
 
         // Calculate overall stats (for all time) using optimized method
-        $overallStats = $this->getOptimizedPeriodStats(null, null, $defaultCurrency, 'all', $account->id);
+        $overallStats = $this->getOptimizedPeriodStats(null, null, $defaultCurrencyId, 'all', $account->id);
         $overallIncome = (float) ($overallStats['income'] ?? 0);
         $overallOutcome = (float) ($overallStats['outcome'] ?? 0);
         $overallBalance = $overallIncome - $overallOutcome;
 
-                
-        $monthlyData = $this->getMonthlyData($year, $defaultCurrency, $account->id) ?? [];
-        $yearlyData = $this->getYearlyData($defaultCurrency, $account->id) ?? [];
+        $monthlyData = $this->getMonthlyData($year, $defaultCurrencyId, $account->id) ?? [];
+        $yearlyData = $this->getYearlyData($defaultCurrencyId, $account->id) ?? [];
 
         // Calculate daily averages for the default currency and period
-        $dailyAverages = $this->calculateDailyAverages($year, $month, $mode, $defaultCurrency, $account->id);
+        $dailyAverages = $this->calculateDailyAverages($year, $month, $mode, $defaultCurrencyId, $account->id);
 
         return Inertia::render('Dashboard', [
             'account' => $account,
@@ -148,7 +164,7 @@ class DashboardController extends Controller
                 'showCurrencyTabs' => ($year > 2024 || ($year == 2024 && $month >= 4)),
                 'dailyIncomeAverage' => $dailyAverages['dailyIncomeAverage'],
                 'dailyOutcomeAverage' => $dailyAverages['dailyOutcomeAverage'],
-            ], $stats),
+            ], $stats, $exchangeRates),
             'chartData' => [
                 'monthly' => $monthlyData,
                 'yearly' => $yearlyData,

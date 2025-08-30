@@ -15,12 +15,12 @@ trait DashboardCalculationsTrait
      * @param int $year
      * @param int $month
      * @param string $type
-     * @param string $currency
+     * @param int|null $currencyId
      * @param string $mode
      * @param int|null $accountId
      * @return float
      */
-    protected function calculateTotalWithCurrencyConversion($year, $month, $type, $currency = 'IDR', $mode = 'month', $accountId = null)
+    protected function calculateTotalWithCurrencyConversion($year, $month, $type, $currencyId = null, $mode = 'month', $accountId = null)
     {
         $model = $type === 'income' ? Income::class : Outcome::class;
         $query = $model::query()
@@ -42,15 +42,11 @@ trait DashboardCalculationsTrait
         // For 'all' mode, no date filter is applied
 
         // Apply currency filtering to match income/outcome pages behavior
-        if ($currency && $currency !== 'IDR') {
-            $query->where('currency', $currency);
+        if ($currencyId) {
+            $query->where('currency_id', $currencyId);
         } else {
-            // For 'IDR', include both null and 'Rp' currency transactions (legacy support)
-            $query->where(function($q) {
-                $q->where('currency', 'Rp')
-                  ->orWhere('currency', 'IDR')
-                  ->orWhereNull('currency');
-            });
+            // If no currency_id specified, include all transactions (for backward compatibility)
+            // You might want to add logic here to filter by default currency if needed
         }
 
         $result = $query->first();
@@ -62,18 +58,18 @@ trait DashboardCalculationsTrait
      *
      * @param int $year
      * @param int $month
-     * @param string $currency
+     * @param int|null $currencyId
      * @param int|null $accountId
      * @return array
      */
-    protected function calculateMonthlyStats($year, $month, $currency, $accountId = null)
+    protected function calculateMonthlyStats($year, $month, $currencyId, $accountId = null)
     {
         // Calculate current and previous month data in a single optimized query
         $previousMonth = $month == 1 ? 12 : $month - 1;
         $previousYear = $month == 1 ? $year - 1 : $year;
 
-        $currentData = $this->getOptimizedPeriodStats($year, $month, $currency, 'month', $accountId);
-        $previousData = $this->getOptimizedPeriodStats($previousYear, $previousMonth, $currency, 'month', $accountId);
+        $currentData = $this->getOptimizedPeriodStats($year, $month, $currencyId, 'month', $accountId);
+        $previousData = $this->getOptimizedPeriodStats($previousYear, $previousMonth, $currencyId, 'month', $accountId);
 
         $totalRevenue = $currentData['income'];
         $totalOutcome = abs($currentData['outcome']);
@@ -114,17 +110,17 @@ trait DashboardCalculationsTrait
      * Calculate yearly statistics with optimized queries
      *
      * @param int $year
-     * @param string $currency
+     * @param int|null $currencyId
      * @param int|null $accountId
      * @return array
      */
-    protected function calculateYearlyStats($year, $currency, $accountId = null)
+    protected function calculateYearlyStats($year, $currencyId, $accountId = null)
     {
         // Calculate current and previous year data in optimized queries
         $previousYear = $year - 1;
 
-        $currentData = $this->getOptimizedPeriodStats($year, 0, $currency, 'year', $accountId);
-        $previousData = $this->getOptimizedPeriodStats($previousYear, 0, $currency, 'year', $accountId);
+        $currentData = $this->getOptimizedPeriodStats($year, 0, $currencyId, 'year', $accountId);
+        $previousData = $this->getOptimizedPeriodStats($previousYear, 0, $currencyId, 'year', $accountId);
 
         $totalRevenue = $currentData['income'];
         $totalOutcome = abs($currentData['outcome']);
@@ -160,13 +156,13 @@ trait DashboardCalculationsTrait
     /**
      * Calculate all time statistics with optimized queries
      *
-     * @param string $currency
+     * @param int|null $currencyId
      * @param int|null $accountId
      * @return array
      */
-    protected function calculateAllTimeStats($currency, $accountId = null)
+    protected function calculateAllTimeStats($currencyId, $accountId = null)
     {
-        $data = $this->getOptimizedPeriodStats(0, 0, $currency, 'all', $accountId);
+        $data = $this->getOptimizedPeriodStats(0, 0, $currencyId, 'all', $accountId);
 
         $totalRevenue = $data['income'];
         $totalOutcome = abs($data['outcome']);
@@ -200,12 +196,12 @@ trait DashboardCalculationsTrait
      *
      * @param int|null $year
      * @param int|null $month
-     * @param string $currency
+     * @param int|null $currencyId
      * @param string $mode
      * @param int|null $accountId
      * @return array
      */
-    protected function getOptimizedPeriodStats($year, $month, $currency, $mode, $accountId = null)
+    protected function getOptimizedPeriodStats($year, $month, $currencyId, $mode, $accountId = null)
     {
         // Query income and outcome separately
         $incomeQuery = Income::query()
@@ -235,20 +231,12 @@ trait DashboardCalculationsTrait
         // For 'all' mode, no date filter is applied
 
         // Apply currency filtering
-        if ($currency && $currency !== 'IDR') {
-            $incomeQuery->where('currency', $currency);
-            $outcomeQuery->where('currency', $currency);
+        if ($currencyId) {
+            $incomeQuery->where('currency_id', $currencyId);
+            $outcomeQuery->where('currency_id', $currencyId);
         } else {
-            $incomeQuery->where(function($q) {
-                $q->where('currency', 'Rp')
-                  ->orWhere('currency', 'IDR')
-                  ->orWhereNull('currency');
-            });
-            $outcomeQuery->where(function($q) {
-                $q->where('currency', 'Rp')
-                  ->orWhere('currency', 'IDR')
-                  ->orWhereNull('currency');
-            });
+            // If no currency_id specified, include all transactions (for backward compatibility)
+            // You might want to add logic here to filter by default currency if needed
         }
 
         $incomeResult = $incomeQuery->first();
@@ -326,11 +314,11 @@ trait DashboardCalculationsTrait
      * Get monthly chart data for dashboard with optimized query
      *
      * @param int $year
-     * @param string $currency
+     * @param int|null $currencyId
      * @param int|null $accountId
      * @return array
      */
-    protected function getMonthlyData($year, $currency = 'IDR', $accountId = null)
+    protected function getMonthlyData($year, $currencyId = null, $accountId = null)
     {
         $incomeQuery = Income::query()
             ->selectRaw('MONTH(transaction_date) as month, SUM(amount) as total')
@@ -353,20 +341,12 @@ trait DashboardCalculationsTrait
         }
 
         // Apply currency filtering
-        if ($currency && $currency !== 'IDR') {
-            $incomeQuery->where('currency', $currency);
-            $outcomeQuery->where('currency', $currency);
+        if ($currencyId) {
+            $incomeQuery->where('currency_id', $currencyId);
+            $outcomeQuery->where('currency_id', $currencyId);
         } else {
-            $incomeQuery->where(function($q) {
-                $q->where('currency', 'Rp')
-                  ->orWhere('currency', 'IDR')
-                  ->orWhereNull('currency');
-            });
-            $outcomeQuery->where(function($q) {
-                $q->where('currency', 'Rp')
-                  ->orWhere('currency', 'IDR')
-                  ->orWhereNull('currency');
-            });
+            // If no currency_id specified, include all transactions (for backward compatibility)
+            // You might want to add logic here to filter by default currency if needed
         }
 
         $incomeResults = $incomeQuery->get()->keyBy('month');
@@ -392,11 +372,11 @@ trait DashboardCalculationsTrait
     /**
      * Get yearly chart data for dashboard with optimized query
      *
-     * @param string $currency
+     * @param int|null $currencyId
      * @param int|null $accountId
      * @return array
      */
-    protected function getYearlyData($currency = 'IDR', $accountId = null)
+    protected function getYearlyData($currencyId = null, $accountId = null)
     {
         $currentYear = Carbon::now()->year;
         $startYear = $currentYear - 4;
@@ -428,20 +408,12 @@ trait DashboardCalculationsTrait
         }
 
         // Apply currency filtering
-        if ($currency && $currency !== 'IDR') {
-            $incomeQuery->where('currency', $currency);
-            $outcomeQuery->where('currency', $currency);
+        if ($currencyId) {
+            $incomeQuery->where('currency_id', $currencyId);
+            $outcomeQuery->where('currency_id', $currencyId);
         } else {
-            $incomeQuery->where(function($q) {
-                $q->where('currency', 'Rp')
-                  ->orWhere('currency', 'IDR')
-                  ->orWhereNull('currency');
-            });
-            $outcomeQuery->where(function($q) {
-                $q->where('currency', 'Rp')
-                  ->orWhere('currency', 'IDR')
-                  ->orWhereNull('currency');
-            });
+            // If no currency_id specified, include all transactions (for backward compatibility)
+            // You might want to add logic here to filter by default currency if needed
         }
 
         $incomeResults = $incomeQuery->get()->keyBy('year');
@@ -483,26 +455,58 @@ trait DashboardCalculationsTrait
         $userCurrencies = $this->getUserCurrencies($accountId);
         $breakdown = [];
 
-        foreach ($userCurrencies as $currency) {
-            $currencyData = $this->getOptimizedPeriodStats($year, $month, $currency, $mode, $accountId);
-            $breakdown[$currency] = [
-                'income' => $currencyData['income'],
-                'outcome' => abs($currencyData['outcome']),
-                'balance' => $currencyData['income'] - abs($currencyData['outcome']),
-            ];
+        foreach ($userCurrencies as $currencyName) {
+            // Get currency ID from name
+            $currencyId = $this->getCurrencyIdFromName($currencyName, $accountId);
+
+            if ($currencyId) {
+                $currencyData = $this->getOptimizedPeriodStats($year, $month, $currencyId, $mode, $accountId);
+                $breakdown[$currencyName] = [
+                    'income' => $currencyData['income'],
+                    'outcome' => abs($currencyData['outcome']),
+                    'balance' => $currencyData['income'] - abs($currencyData['outcome']),
+                ];
+            }
         }
 
         // Fallback to IDR if no currencies found
         if (empty($breakdown)) {
-            $idrData = $this->getOptimizedPeriodStats($year, $month, 'IDR', $mode, $accountId);
-            $breakdown['IDR'] = [
-                'income' => $idrData['income'],
-                'outcome' => abs($idrData['outcome']),
-                'balance' => $idrData['income'] - abs($idrData['outcome']),
-            ];
+            $idrId = $this->getCurrencyIdFromName('IDR', $accountId);
+            if ($idrId) {
+                $idrData = $this->getOptimizedPeriodStats($year, $month, $idrId, $mode, $accountId);
+                $breakdown['IDR'] = [
+                    'income' => $idrData['income'],
+                    'outcome' => abs($idrData['outcome']),
+                    'balance' => $idrData['income'] - abs($idrData['outcome']),
+                ];
+            }
         }
 
         return $breakdown;
+    }
+
+    /**
+     * Get currency ID from currency name for the user
+     *
+     * @param string $currencyName
+     * @param int|null $accountId
+     * @return int|null
+     */
+    protected function getCurrencyIdFromName($currencyName, $accountId = null)
+    {
+        $query = \App\Models\Currency::where('user_id', Auth::id())
+            ->where('name', $currencyName);
+
+        if ($accountId) {
+            $query->where(function ($q) use ($accountId) {
+                $q->where('account_id', $accountId)
+                  ->orWhereNull('account_id');
+            });
+        } else {
+            $query->whereNull('account_id');
+        }
+
+        return $query->value('id');
     }
 
     /**
@@ -514,15 +518,17 @@ trait DashboardCalculationsTrait
     protected function getUserCurrencies($accountId = null)
     {
         $incomeQuery = Income::query()
-            ->select('currency')
+            ->select('currency_id')
+            ->with('currency')
             ->where('user_id', Auth::id())
-            ->whereNotNull('currency')
+            ->whereNotNull('currency_id')
             ->distinct();
 
         $outcomeQuery = Outcome::query()
-            ->select('currency')
+            ->select('currency_id')
+            ->with('currency')
             ->where('user_id', Auth::id())
-            ->whereNotNull('currency')
+            ->whereNotNull('currency_id')
             ->distinct();
 
         // Apply account filter if provided
@@ -531,32 +537,22 @@ trait DashboardCalculationsTrait
             $outcomeQuery->where('account_id', $accountId);
         }
 
-        $incomeCurrencies = $incomeQuery->pluck('currency')->filter()->toArray();
-        $outcomeCurrencies = $outcomeQuery->pluck('currency')->filter()->toArray();
+        $incomeCurrencies = $incomeQuery->get()->pluck('currency.name')->filter()->toArray();
+        $outcomeCurrencies = $outcomeQuery->get()->pluck('currency.name')->filter()->toArray();
 
         // Merge and get unique currencies
         $allCurrencies = array_unique(array_merge($incomeCurrencies, $outcomeCurrencies));
 
-        // Normalize legacy currency values and remove duplicates
-        $normalizedCurrencies = [];
-        foreach ($allCurrencies as $currency) {
-            // Convert legacy 'Rp' to 'IDR'
-            $normalized = ($currency === 'Rp') ? 'IDR' : $currency;
-            if (!in_array($normalized, $normalizedCurrencies)) {
-                $normalizedCurrencies[] = $normalized;
-            }
-        }
-
         // Sort currencies, with IDR first if it exists
-        sort($normalizedCurrencies);
-        if (in_array('IDR', $normalizedCurrencies)) {
-            $normalizedCurrencies = array_merge(
+        sort($allCurrencies);
+        if (in_array('IDR', $allCurrencies)) {
+            $allCurrencies = array_merge(
                 ['IDR'],
-                array_filter($normalizedCurrencies, fn($c) => $c !== 'IDR')
+                array_filter($allCurrencies, fn($c) => $c !== 'IDR')
             );
         }
 
-        return $normalizedCurrencies;
+        return $allCurrencies;
     }
 
     /**
@@ -565,13 +561,13 @@ trait DashboardCalculationsTrait
      * @param int $year
      * @param int $month
      * @param string $mode
-     * @param string $currency
+     * @param int|null $currencyId
      * @param int|null $accountId
      * @return array
      */
-    protected function calculateDailyAverages($year, $month, $mode, $currency, $accountId = null)
+    protected function calculateDailyAverages($year, $month, $mode, $currencyId, $accountId = null)
     {
-        $data = $this->getOptimizedPeriodStats($year, $month, $currency, $mode, $accountId);
+        $data = $this->getOptimizedPeriodStats($year, $month, $currencyId, $mode, $accountId);
         $income = (float) $data['income'];
         $outcome = abs((float) $data['outcome']);
 

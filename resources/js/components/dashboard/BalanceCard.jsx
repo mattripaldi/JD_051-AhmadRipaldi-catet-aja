@@ -81,12 +81,12 @@ export function BalanceCard({ stats, currencyBreakdown, filters, availableCurren
             ) : (
                 <div className="mb-4">
                     <p className="flex items-center justify-center">
-                        <Dot size={30} />
-                        <Dot size={30} />
-                        <Dot size={30} />
-                        <Dot size={30} />
-                        <Dot size={30} />
-                        <Dot size={30} />
+                        <Dot size={28} strokeWidth={4} />
+                        <Dot size={28} strokeWidth={4} />
+                        <Dot size={28} strokeWidth={4} />   
+                        <Dot size={28} strokeWidth={4} />
+                        <Dot size={28} strokeWidth={4} />
+                        <Dot size={28} strokeWidth={4} />
                     </p>
                 </div>
             )}

@@ -14,7 +14,7 @@ class Income extends Model
         'description',
         'amount',
         'transaction_date',
-        'currency',
+        'currency_id',
         'categorization_status'
     ];
 
@@ -36,5 +36,10 @@ class Income extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function currency(): BelongsTo
+    {
+        return $this->belongsTo(Currency::class);
     }
 }

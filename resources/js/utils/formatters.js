@@ -202,22 +202,14 @@ export const formatCompactNumber = (amount, currencySymbol = 'Rp') => {
 
     // Format based on amount size with Indonesian abbreviations
     if (absAmount >= 1000000000000) {
-        return `${prefix}${currencySymbol}${space}${(absAmount / 1000000000000).toFixed(1)}T`;
+        return `${prefix}${currencySymbol}${space}${(absAmount / 1000000000000).toFixed(0)}T`;
     } else if (absAmount >= 1000000000) {
-        return `${prefix}${currencySymbol}${space}${(absAmount / 1000000000).toFixed(1)}M`;
+        return `${prefix}${currencySymbol}${space}${(absAmount / 1000000000).toFixed(0)}M`;
     } else if (absAmount >= 1000000) {
-        return `${prefix}${currencySymbol}${space}${(absAmount / 1000000).toFixed(1)}Jt`;
-    } else if (absAmount >= 100000) {
-        // For 100k-999k, show with 1 decimal place to avoid rounding
-        return `${prefix}${currencySymbol}${space}${(absAmount / 1000).toFixed(1)}Rb`;
-    } else if (absAmount >= 10000) {
-        // For 10k-99k, show with 1 decimal place to be more precise
-        return `${prefix}${currencySymbol}${space}${(absAmount / 1000).toFixed(1)}Rb`;
-    } else if (absAmount >= 1000) {
-        // For 1k-9.9k, show with 1 decimal place (e.g., 1750 = 1.8Rb)
-        return `${prefix}${currencySymbol}${space}${(absAmount / 1000).toFixed(1)}Rb`;
+        return `${prefix}${currencySymbol}${space}${(absAmount / 1000000).toFixed(0)}Jt`;
     }
-    return `${prefix}${currencySymbol}${space}${absAmount.toFixed(0)}`;
+    // For amounts less than 1 million, show full number without Rb
+    return `${prefix}${currencySymbol}${space}${absAmount.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
 };
 
 // Helper function to format currency with optional conversion to IDR

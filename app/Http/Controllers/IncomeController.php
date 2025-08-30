@@ -27,12 +27,26 @@ class IncomeController extends Controller
 
     public function create(Request $request, $accountId)
     {
+        // Get available currencies for the user
+        $currencies = Auth::user()->currencies()
+                        ->select('name', 'symbol')
+                        ->orderBy('name')
+                        ->get()
+                        ->map(function ($currency) {
+                            return [
+                                'name' => $currency->name,
+                                'symbol' => $currency->symbol,
+                                'display' => $currency->name . ' (' . $currency->symbol . ')'
+                            ];
+                        });
+
         return Inertia::modal('Incomes/Create', [
             'filters' => [
                 'year' => (int) Carbon::now()->year,
                 'month' => (int) Carbon::now()->month,
                 'currency' => 'IDR',
             ],
+            'currencies' => $currencies,
         ])->baseRoute('income.index', ['account' => $accountId]);
     }
 
@@ -41,6 +55,19 @@ class IncomeController extends Controller
         $year = $request->query('year', Carbon::now()->year);
         $month = $request->query('month', Carbon::now()->month);
         $currency = $request->query('currency', 'IDR');
+
+        // Get available currencies for the user
+        $currencies = Auth::user()->currencies()
+                        ->select('name', 'symbol')
+                        ->orderBy('name')
+                        ->get()
+                        ->map(function ($currency) {
+                            return [
+                                'name' => $currency->name,
+                                'symbol' => $currency->symbol,
+                                'display' => $currency->name . ' (' . $currency->symbol . ')'
+                            ];
+                        });
 
         return Inertia::modal('Incomes/Edit', [
             'transaction' => [
@@ -56,6 +83,7 @@ class IncomeController extends Controller
                 'month' => (int) $month,
                 'currency' => $currency,
             ],
+            'currencies' => $currencies,
         ])->baseRoute('income.index', ['account' => $accountId]);
     }
 
@@ -164,6 +192,19 @@ class IncomeController extends Controller
             $month
         );
 
+        // Get available currencies for the user
+        $currencies = Auth::user()->currencies()
+                        ->select('name', 'symbol')
+                        ->orderBy('name')
+                        ->get()
+                        ->map(function ($currency) {
+                            return [
+                                'name' => $currency->name,
+                                'symbol' => $currency->symbol,
+                                'display' => $currency->name . ' (' . $currency->symbol . ')'
+                            ];
+                        });
+
         return Inertia::render('Incomes/Index', [
             'transactions' => $transactions,
             'filters' => [
@@ -185,6 +226,7 @@ class IncomeController extends Controller
                 'showCurrencyTabs' => ($year > 2024 || ($year == 2024 && $month >= 4)),
             ],
             'currencyBreakdown' => $currencyBreakdown,
+            'currencies' => $currencies,
         ]);
     }
 

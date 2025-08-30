@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import React, { useRef, useState, useEffect } from 'react';
 
-export default function NewIncome({ transactions: initialTransactions, filters, stats, currencyBreakdown }) {
+export default function NewIncome({ transactions: initialTransactions, filters, stats, currencyBreakdown, currencies }) {
     const { auth } = usePage().props;
 
     // Server-side search state
@@ -120,45 +120,42 @@ export default function NewIncome({ transactions: initialTransactions, filters, 
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-32">
-                                    <DropdownMenuItem
-                                        className="cursor-pointer"
-                                        onClick={() => {
-                                            const currentParams = new URLSearchParams(window.location.search);
-                                            currentParams.set('currency', 'IDR');
-                                            router.get(window.location.pathname, Object.fromEntries(currentParams), {
-                                                preserveState: true,
-                                                replace: true,
-                                            });
-                                        }}
-                                    >
-                                        IDR
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                        className="cursor-pointer"
-                                        onClick={() => {
-                                            const currentParams = new URLSearchParams(window.location.search);
-                                            currentParams.set('currency', 'USD');
-                                            router.get(window.location.pathname, Object.fromEntries(currentParams), {
-                                                preserveState: true,
-                                                replace: true,
-                                            });
-                                        }}
-                                    >
-                                        USD
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                        className="cursor-pointer"
-                                        onClick={() => {
-                                            const currentParams = new URLSearchParams(window.location.search);
-                                            currentParams.set('currency', 'EUR');
-                                            router.get(window.location.pathname, Object.fromEntries(currentParams), {
-                                                preserveState: true,
-                                                replace: true,
-                                            });
-                                        }}
-                                    >
-                                        EUR
-                                    </DropdownMenuItem>
+                                    {currencies && currencies.length > 0 ? (
+                                        currencies.map((currency) => (
+                                            <DropdownMenuItem
+                                                key={currency.name}
+                                                className="cursor-pointer"
+                                                onClick={() => {
+                                                    const currentParams = new URLSearchParams(window.location.search);
+                                                    currentParams.set('currency', currency.name);
+                                                    router.get(window.location.pathname, Object.fromEntries(currentParams), {
+                                                        preserveState: true,
+                                                        replace: true,
+                                                    });
+                                                }}
+                                            >
+                                                {currency.name}
+                                            </DropdownMenuItem>
+                                        ))
+                                    ) : (
+                                        // Fallback to default currencies if no user currencies exist
+                                        ['IDR', 'USD', 'EUR'].map((currencyCode) => (
+                                            <DropdownMenuItem
+                                                key={currencyCode}
+                                                className="cursor-pointer"
+                                                onClick={() => {
+                                                    const currentParams = new URLSearchParams(window.location.search);
+                                                    currentParams.set('currency', currencyCode);
+                                                    router.get(window.location.pathname, Object.fromEntries(currentParams), {
+                                                        preserveState: true,
+                                                        replace: true,
+                                                    });
+                                                }}
+                                            >
+                                                {currencyCode}
+                                            </DropdownMenuItem>
+                                        ))
+                                    )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
 

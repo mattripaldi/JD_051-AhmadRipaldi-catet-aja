@@ -27,12 +27,35 @@ class OutcomeController extends Controller
 
     public function create(Request $request, $accountId)
     {
+        // Get available currencies for the user
+        $currencies = Auth::user()->currencies()
+                        ->select('name', 'symbol')
+                        ->orderBy('name')
+                        ->get()
+                        ->map(function ($currency) {
+                            return [
+                                'name' => $currency->name,
+                                'symbol' => $currency->symbol,
+                                'display' => $currency->name . ' (' . $currency->symbol . ')'
+                            ];
+                        });
+        
+        // Add IDR as default if not exists
+        if ($currencies->where('name', 'IDR')->isEmpty()) {
+            $currencies->prepend([
+                'name' => 'IDR',
+                'symbol' => 'Rp',
+                'display' => 'IDR (Rp)'
+            ]);
+        }
+
         return Inertia::modal('Outcomes/Create', [
             'filters' => [
                 'year' => (int) Carbon::now()->year,
                 'month' => (int) Carbon::now()->month,
                 'currency' => 'IDR',
             ],
+            'currencies' => $currencies,
         ])->baseRoute('outcome.index', ['account' => $accountId]);
     }
 
@@ -41,6 +64,28 @@ class OutcomeController extends Controller
         $year = $request->query('year', Carbon::now()->year);
         $month = $request->query('month', Carbon::now()->month);
         $currency = $request->query('currency', 'IDR');
+
+        // Get available currencies for the user
+        $currencies = Auth::user()->currencies()
+                        ->select('name', 'symbol')
+                        ->orderBy('name')
+                        ->get()
+                        ->map(function ($currency) {
+                            return [
+                                'name' => $currency->name,
+                                'symbol' => $currency->symbol,
+                                'display' => $currency->name . ' (' . $currency->symbol . ')'
+                            ];
+                        });
+        
+        // Add IDR as default if not exists
+        if ($currencies->where('name', 'IDR')->isEmpty()) {
+            $currencies->prepend([
+                'name' => 'IDR',
+                'symbol' => 'Rp',
+                'display' => 'IDR (Rp)'
+            ]);
+        }
 
         return Inertia::modal('Outcomes/Edit', [
             'transaction' => [
@@ -56,6 +101,7 @@ class OutcomeController extends Controller
                 'month' => (int) $month,
                 'currency' => $currency,
             ],
+            'currencies' => $currencies,
         ])->baseRoute('outcome.index', ['account' => $accountId]);
     }
 
@@ -165,6 +211,19 @@ class OutcomeController extends Controller
             $month
         );
 
+        // Get available currencies for the user
+        $currencies = Auth::user()->currencies()
+                        ->select('name', 'symbol')
+                        ->orderBy('name')
+                        ->get()
+                        ->map(function ($currency) {
+                            return [
+                                'name' => $currency->name,
+                                'symbol' => $currency->symbol,
+                                'display' => $currency->name . ' (' . $currency->symbol . ')'
+                            ];
+                        });
+
         return Inertia::render('Outcomes/Index', [
             'transactions' => $transactions,
             'filters' => [
@@ -186,6 +245,7 @@ class OutcomeController extends Controller
                 'showCurrencyTabs' => ($year > 2024 || ($year == 2024 && $month >= 4)),
             ],
             'currencyBreakdown' => $currencyBreakdown,
+            'currencies' => $currencies,
         ]);
     }
 

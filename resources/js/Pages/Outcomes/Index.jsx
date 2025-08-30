@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Link } from '@inertiajs/react';
 import { ModalLink } from '@inertiaui/modal-react';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { OutcomeHeader } from '@/components/outcome/OutcomeHeader';
 import {
     Check,
     Edit,
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react';
 import React, { useRef, useState, useEffect } from 'react';
 
-export default function IndexOutcome({ transactions: initialTransactions, filters, stats, currencyBreakdown, currencies }) {
+export default function IndexOutcome({ transactions: initialTransactions, filters, stats, currencyBreakdown, currencies, availableCurrencies }) {
     const { auth } = usePage().props;
 
     // Server-side search state
@@ -32,6 +33,40 @@ export default function IndexOutcome({ transactions: initialTransactions, filter
 
     // Use server-filtered transactions
     const filteredTransactions = initialTransactions.data || [];
+
+    // Handle filter changes
+    const handleYearChange = (year) => {
+        router.get(window.location.pathname, {
+            ...Object.fromEntries(new URLSearchParams(window.location.search)),
+            year: year,
+            page: 1
+        }, { 
+            preserveState: true,
+            replace: true 
+        });
+    };
+
+    const handleMonthChange = (month) => {
+        router.get(window.location.pathname, {
+            ...Object.fromEntries(new URLSearchParams(window.location.search)),
+            month: month,
+            page: 1
+        }, { 
+            preserveState: true,
+            replace: true 
+        });
+    };
+
+    const handleModeChange = (mode) => {
+        router.get(window.location.pathname, {
+            ...Object.fromEntries(new URLSearchParams(window.location.search)),
+            mode: mode,
+            page: 1
+        }, { 
+            preserveState: true,
+            replace: true 
+        });
+    };
 
     // Server-side search with debouncing
     const handleSearch = (e) => {
@@ -102,100 +137,16 @@ export default function IndexOutcome({ transactions: initialTransactions, filter
 
             <div>
                 {/* Header */}
-                <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-b-3xl px-3 py-4 text-white sm:px-4 sm:py-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                            <Link
-                                href="/dashboard"
-                                className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 p-2 transition-colors hover:bg-white/30"
-                            >
-                                <img src="/logo-icon.svg" alt="Logo" className="h-full w-full object-contain" />
-                            </Link>
-                            <div>
-                                <h1 className="text-lg font-bold sm:text-xl">Pengeluaran</h1>
-                                <p className="text-xs sm:text-sm text-red-100">Kelola pengeluaran Anda</p>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-medium"
-                                    >
-                                        {(() => {
-                                            if (currencies && currencies.length > 0) {
-                                                const selectedCurrency = selectedCurrencyId ?
-                                                    currencies.find(c => c.id === Number(selectedCurrencyId)) :
-                                                    (currencies.find(c => c.name === 'IDR') || currencies[0]);
-                                                return selectedCurrency ? selectedCurrency.name : 'IDR';
-                                            }
-                                            return 'IDR';
-                                        })()} ▼
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-32">
-                                    {currencies && currencies.length > 0 ? (
-                                        currencies.map((currency) => {
-                                            const isSelected = selectedCurrencyId ?
-                                                currency.id === Number(selectedCurrencyId) :
-                                                (currency.name === 'IDR' || currencies[0]?.id === currency.id);
-                                            return (
-                                                <DropdownMenuItem
-                                                    key={currency.id}
-                                                    className="cursor-pointer flex items-center justify-between"
-                                                    onClick={() => {
-                                                        // Update local state immediately for instant UI feedback
-                                                        setSelectedCurrencyId(currency.id.toString());
-
-                                                        const currentParams = new URLSearchParams(window.location.search);
-                                                        currentParams.set('currency_id', currency.id);
-                                                        router.get(window.location.pathname, Object.fromEntries(currentParams), {
-                                                            preserveState: true,
-                                                            replace: true,
-                                                        });
-                                                    }}
-                                                >
-                                                    <span>{currency.name}</span>
-                                                    {isSelected && <Check size={16} className="text-blue-600" />}
-                                                </DropdownMenuItem>
-                                            );
-                                        })
-                                    ) : (
-                                        // Fallback to default currency if no user currencies exist
-                                        <DropdownMenuItem
-                                            key="IDR"
-                                            className="cursor-pointer flex items-center justify-between"
-                                            onClick={() => {
-                                                // Update local state immediately for instant UI feedback
-                                                setSelectedCurrencyId(null);
-
-                                                const currentParams = new URLSearchParams(window.location.search);
-                                                currentParams.delete('currency_id');
-                                                router.get(window.location.pathname, Object.fromEntries(currentParams), {
-                                                    preserveState: true,
-                                                    replace: true,
-                                                });
-                                            }}
-                                        >
-                                            <span>IDR</span>
-                                            {!selectedCurrencyId && <Check size={16} className="text-blue-600" />}
-                                        </DropdownMenuItem>
-                                    )}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            <Link
-                                href="/account"
-                                className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-medium"
-                            >
-                                Ganti Akun
-                            </Link>
-                        </div>
-                    </div>
-                </div>
+                <OutcomeHeader
+                    stats={stats}
+                    filters={filters}
+                    onModeChange={handleModeChange}
+                    onYearChange={handleYearChange}
+                    onMonthChange={handleMonthChange}
+                    currencyBreakdown={currencyBreakdown}
+                    availableCurrencies={availableCurrencies}
+                    currencies={currencies}
+                />
 
                 {/* Search Section */}
                 <div className="px-4 py-3">

@@ -1,6 +1,6 @@
 # Catet Aja
 
-Transformasi cara Anda mengelola keuangan dengan Catet Aja - aplikasi cerdas berbasis AI yang menjadi teman finansial terpercaya Anda. Nikmati pelacakan pemasukan/pengeluaran yang intuitif, kategorisasi otomatis canggih, dukungan multi-mata uang real-time, dan ChatBot AI yang selalu siap membantu kapan saja.
+Transformasi cara Anda mengelola keuangan dengan Catet Aja - aplikasi cerdas berbasis AI yang menjadi teman finansial terpercaya Anda. Pelacakan pemasukan/pengeluaran yang intuitif, kategorisasi otomatis canggih, dukungan multi currency, dan ChatBot AI yang selalu siap membantu kapan saja.
 
 ## Fitur
 
@@ -9,13 +9,12 @@ Transformasi cara Anda mengelola keuangan dengan Catet Aja - aplikasi cerdas ber
 - 🤖 **Kategorisasi AI**: Kategorisasi transaksi otomatis menggunakan AI
 - 🌍 **Dukungan Multi-Mata Uang**: Menangani beberapa mata uang dengan kurs pertukaran
 
-
 ## System Requirements
 
 - **PHP**: 8.2 or higher
-- **Node.js**: 20.0 or higher
+- **Node.js**: 20 or higher
 - **Composer**: Latest stable version
-- **Database**: SQLite (default), MySQL, PostgreSQL, or SQL Server
+- **Database**: SQLite (default), MySQL, PostgreSQL, or Anything you like
 
 ## Installation
 

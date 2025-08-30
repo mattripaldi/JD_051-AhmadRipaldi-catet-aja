@@ -202,14 +202,17 @@ class IncomeController extends Controller
             $previousPeriodName = (string) ($year - 1);
         }
 
-        // Get exchange rates for all user currencies to IDR for the current month
-        $currencyRates = $this->currencyService->getExchangeRatesForUserCurrencies(
-            array_keys($currencyBreakdown),
-            Auth::id(),
-            null,
-            $year,
-            $month
-        );
+        // Get available currencies for the user (similar to Dashboard)
+        $userCurrencies = $this->getUserCurrencies();
+
+        // Get exchange rates for frontend currency conversion (like Dashboard)
+        $exchangeRates = [];
+        foreach ($userCurrencies as $currency) {
+            if ($currency !== 'IDR') {
+                $rate = $this->currencyService->getToIdrRate($currency, Auth::id(), null);
+                $exchangeRates[strtolower($currency) . 'ToIdrRate'] = $rate;
+            }
+        }
 
         // Get available currencies for the user
         $currencies = Auth::user()->currencies()
@@ -235,18 +238,18 @@ class IncomeController extends Controller
                 'category' => $category,
                 'currency_id' => $currencyId,
             ],
-            'stats' => [
+            'stats' => array_merge([
                 'totalRevenue' => $currentTotals['totalRevenue'],
                 'totalOutcome' => $currentTotals['totalOutcome'],
                 'revenueChange' => round($revenueChange, 1),
                 'outcomeChange' => round($outcomeChange, 1),
                 'currentPeriod' => $currentPeriodName,
                 'previousPeriod' => $previousPeriodName,
-                'currencyRates' => $currencyRates,
                 'showCurrencyTabs' => ($year > 2024 || ($year == 2024 && $month >= 4)),
-            ],
+            ], $exchangeRates),
             'currencyBreakdown' => $currencyBreakdown,
             'currencies' => $currencies,
+            'availableCurrencies' => $userCurrencies,
         ]);
     }
 

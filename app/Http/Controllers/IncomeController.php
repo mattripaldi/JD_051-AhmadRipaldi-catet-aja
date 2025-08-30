@@ -205,8 +205,9 @@ class IncomeController extends Controller
             'currency' => $request->currency ?? 'IDR'
         ]); 
 
-        // Dispatch job to categorize the transaction
-        CategorizeTransactionJob::dispatch($transaction);
+        // // Temporary Disable
+        // // Dispatch job to categorize the transaction
+        // CategorizeTransactionJob::dispatch($transaction);
 
         // Preserve current filter parameters
         $redirectParams = [];
@@ -235,10 +236,11 @@ class IncomeController extends Controller
             'currency' => $request->currency
         ]);
         
-        // If description changed, dispatch job to recategorize the transaction
-        if ($descriptionChanged) {
-            CategorizeTransactionJob::dispatch($income, true);
-        }
+        // // Temporary Disable 
+        // // If description changed, dispatch job to recategorize the transaction
+        // if ($descriptionChanged) {
+        //     CategorizeTransactionJob::dispatch($income, true);
+        // }
         
         // Preserve current filter parameters
         $redirectParams = [];

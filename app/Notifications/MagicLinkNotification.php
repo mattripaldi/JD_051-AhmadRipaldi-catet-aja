@@ -40,7 +40,7 @@ class MagicLinkNotification extends Notification implements ShouldQueue
         $magicLinkUrl = URL::signedRoute('magic-link.authenticate', [
             'email' => $notifiable->email,
             'token' => $this->token,
-        ]);
+        ], null, false); // Don't use absolute URLs to avoid domain issues in development
 
         return (new MailMessage)
             ->subject('Your Magic Link to Sign In')

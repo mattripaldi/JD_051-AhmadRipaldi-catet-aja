@@ -32,13 +32,13 @@ class SocialAuthController extends Controller
 
             Auth::login($user);
 
-            // Check if user has a current account and redirect accordingly
-            if ($user->current_account_id) {
-                return redirect()->intended(route('account.dashboard', ['account' => $user->current_account_id], absolute: false));
+                        // Check if user has a current account and it exists
+            if ($user->current_account_id && $user->currentAccount) {
+                return redirect(route('account.dashboard', ['account' => $user->current_account_id]));
             }
-            
+
             // Otherwise, redirect to account selection
-            return redirect()->intended(route('account.index', absolute: false));
+            return redirect(route('account.index'));
         } catch (\Exception $e) {
             return redirect()->route('login')->withErrors([
                 'social' => 'Unable to authenticate with Google. Please try again.'

@@ -35,13 +35,13 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
         
-        // If user already has a current account, redirect to that account's dashboard
-        if ($user->current_account_id) {
-            return redirect()->intended(route('account.dashboard', ['account' => $user->current_account_id], absolute: false));
+                // If user already has a current account, redirect to that account's dashboard
+        if ($user->current_account_id && $user->currentAccount) {
+            return redirect(route('account.dashboard', ['account' => $user->current_account_id]));
         }
-        
+
         // Otherwise, redirect to account selection
-        return redirect()->intended(route('account.index', absolute: false));
+        return redirect(route('account.index'));
     }
 
     /**

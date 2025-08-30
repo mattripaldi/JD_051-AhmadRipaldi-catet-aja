@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\OutcomeController;
@@ -8,6 +9,18 @@ use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\DashboardController;
 
 Route::get('/', function () {
+    if (Auth::check()) {
+        $user = Auth::user();
+
+        if ($user->current_account_id && $user->currentAccount) {
+            return redirect()->route('account.dashboard', ['account' => $user->current_account_id]);
+        }
+
+        if ($user->accounts()->exists()) {
+            return redirect()->route('account.index');
+        }
+    }
+
     return redirect()->route('login');
 })->name('welcome');
 

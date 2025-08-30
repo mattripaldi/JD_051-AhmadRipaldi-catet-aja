@@ -54,8 +54,6 @@ php artisan key:generate
 
 ### 6. Database Setup
 
-#### For SQLite (Default)
-
 ```bash
 # Create the SQLite database file
 touch database/database.sqlite

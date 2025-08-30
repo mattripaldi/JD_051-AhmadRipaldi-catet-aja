@@ -5,7 +5,7 @@ TODO Priority:
     4. Make AI Categorize work
     5. Path "/" has bug too many redirect
     6. AI Chat Service base on context menu
-    7. Finish README
+    7. Finish README (Done, adjustment later)
     
     
 TODO Later:

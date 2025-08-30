@@ -75,11 +75,6 @@ class AccountController extends Controller
 
     public function select(Account $account)
     {
-        // Ensure the account belongs to the authenticated user
-        if ($account->user_id !== Auth::id()) {
-            abort(403, 'Unauthorized');
-        }
-
         // Update the user's current account
         Auth::user()->update(['current_account_id' => $account->id]);
 

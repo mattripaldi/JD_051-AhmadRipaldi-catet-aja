@@ -123,14 +123,14 @@ class IncomeController extends Controller
         $search = $request->query('search', '');
         $category = $request->query('category', null);
 
-        $query = $this->buildTransactionQuery('income', $year, $month, $mode, $currencyId, $search, $category)
+        $query = $this->buildTransactionQuery('income', $year, $month, $mode, $currencyId, $search, $category, $accountId)
             ->select(['id', 'user_id', 'description', 'amount', 'transaction_date', 'currency_id', 'category_id', 'categorization_status']);
         $perPage = 10;
         $data = $query->paginate($perPage)->withQueryString();
 
         // Get all transactions for calculations
-        $allTransactions = $this->getAllTransactionsForCalculations('income', $year, $month, $mode, $currencyId);
-        $previousPeriodTransactions = $this->getPreviousPeriodTransactions($year, $month, $mode, $currencyId, 'income');
+        $allTransactions = $this->getAllTransactionsForCalculations('income', $year, $month, $mode, $currencyId, $accountId);
+        $previousPeriodTransactions = $this->getPreviousPeriodTransactions($year, $month, $mode, $currencyId, 'income', $accountId);
 
         // Calculate totals using trait
         $currentTotals = $this->calculateTotalsFromTransactions($allTransactions, $currencyId, 'income');
@@ -180,14 +180,14 @@ class IncomeController extends Controller
         foreach ($userCurrencies as $userCurrency) {
             $currMap = $currencyMapping[$userCurrency] ?? null;
             $currencyBreakdown[$userCurrency] = [
-                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'income', $currMap, $mode)
+                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'income', $currMap, $mode, $accountId)
             ];
         }
 
         // Fallback to IDR if no currencies found
         if (empty($currencyBreakdown)) {
             $currencyBreakdown['IDR'] = [
-                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'income', null, $mode)
+                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'income', null, $mode, $accountId)
             ];
         }
 
@@ -262,9 +262,12 @@ class IncomeController extends Controller
             'currency_id' => 'nullable|integer|exists:currencies,id',
         ]);
 
+        // Handle both model instances and IDs
+        $accountIdValue = is_object($accountId) ? $accountId->id : $accountId;
+
         $transaction = Income::create([
             'user_id' => Auth::id(),
-            'account_id' => $accountId,
+            'account_id' => $accountIdValue,
             'amount' => $request->amount,
             'description' => $request->description,
             'transaction_date' => $request->date,

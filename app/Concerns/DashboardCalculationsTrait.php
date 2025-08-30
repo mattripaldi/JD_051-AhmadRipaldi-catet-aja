@@ -29,7 +29,9 @@ trait DashboardCalculationsTrait
 
         // Apply account filter if provided
         if ($accountId) {
-            $query->where('account_id', $accountId);
+            // Handle both model instances and IDs
+            $accountIdValue = is_object($accountId) ? $accountId->id : $accountId;
+            $query->where('account_id', $accountIdValue);
         }
 
         // Apply date filters based on mode
@@ -214,8 +216,10 @@ trait DashboardCalculationsTrait
 
         // Apply account filter if provided
         if ($accountId) {
-            $incomeQuery->where('account_id', $accountId);
-            $outcomeQuery->where('account_id', $accountId);
+            // Handle both model instances and IDs
+            $accountIdValue = is_object($accountId) ? $accountId->id : $accountId;
+            $incomeQuery->where('account_id', $accountIdValue);
+            $outcomeQuery->where('account_id', $accountIdValue);
         }
 
         // Apply date filters based on mode
@@ -336,8 +340,10 @@ trait DashboardCalculationsTrait
 
         // Apply account filter if provided
         if ($accountId) {
-            $incomeQuery->where('account_id', $accountId);
-            $outcomeQuery->where('account_id', $accountId);
+            // Handle both model instances and IDs
+            $accountIdValue = is_object($accountId) ? $accountId->id : $accountId;
+            $incomeQuery->where('account_id', $accountIdValue);
+            $outcomeQuery->where('account_id', $accountIdValue);
         }
 
         // Apply currency filtering
@@ -403,8 +409,10 @@ trait DashboardCalculationsTrait
 
         // Apply account filter if provided
         if ($accountId) {
-            $incomeQuery->where('account_id', $accountId);
-            $outcomeQuery->where('account_id', $accountId);
+            // Handle both model instances and IDs
+            $accountIdValue = is_object($accountId) ? $accountId->id : $accountId;
+            $incomeQuery->where('account_id', $accountIdValue);
+            $outcomeQuery->where('account_id', $accountIdValue);
         }
 
         // Apply currency filtering
@@ -498,8 +506,10 @@ trait DashboardCalculationsTrait
             ->where('name', $currencyName);
 
         if ($accountId) {
-            $query->where(function ($q) use ($accountId) {
-                $q->where('account_id', $accountId)
+            // Handle both model instances and IDs
+            $accountIdValue = is_object($accountId) ? $accountId->id : $accountId;
+            $query->where(function ($q) use ($accountIdValue) {
+                $q->where('account_id', $accountIdValue)
                   ->orWhereNull('account_id');
             });
         } else {
@@ -533,8 +543,10 @@ trait DashboardCalculationsTrait
 
         // Apply account filter if provided
         if ($accountId) {
-            $incomeQuery->where('account_id', $accountId);
-            $outcomeQuery->where('account_id', $accountId);
+            // Handle both model instances and IDs
+            $accountIdValue = is_object($accountId) ? $accountId->id : $accountId;
+            $incomeQuery->where('account_id', $accountIdValue);
+            $outcomeQuery->where('account_id', $accountIdValue);
         }
 
         $incomeCurrencies = $incomeQuery->get()->pluck('currency.name')->filter()->toArray();
@@ -631,10 +643,12 @@ trait DashboardCalculationsTrait
 
             // Apply account filter if provided
             if ($accountId) {
-                $firstIncomeQuery->where('account_id', $accountId);
-                $firstOutcomeQuery->where('account_id', $accountId);
-                $lastIncomeQuery->where('account_id', $accountId);
-                $lastOutcomeQuery->where('account_id', $accountId);
+                // Handle both model instances and IDs
+                $accountIdValue = is_object($accountId) ? $accountId->id : $accountId;
+                $firstIncomeQuery->where('account_id', $accountIdValue);
+                $firstOutcomeQuery->where('account_id', $accountIdValue);
+                $lastIncomeQuery->where('account_id', $accountIdValue);
+                $lastOutcomeQuery->where('account_id', $accountIdValue);
             }
 
             $firstIncome = $firstIncomeQuery->first();

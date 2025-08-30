@@ -53,8 +53,10 @@ class Currency extends Model
             ->where('name', $fromCurrency);
 
         if ($accountId) {
-            $query->where(function ($q) use ($accountId) {
-                $q->where('account_id', $accountId)
+            // Handle both model instances and IDs
+            $accountIdValue = is_object($accountId) ? $accountId->id : $accountId;
+            $query->where(function ($q) use ($accountIdValue) {
+                $q->where('account_id', $accountIdValue)
                   ->orWhereNull('account_id');
             });
         } else {
@@ -85,10 +87,13 @@ class Currency extends Model
         float $rate,
         string $symbol = ''
     ): static {
+        // Handle both model instances and IDs
+        $accountIdValue = is_object($accountId) ? $accountId->id : $accountId;
+
         return static::updateOrCreate(
             [
                 'user_id' => $userId,
-                'account_id' => $accountId,
+                'account_id' => $accountIdValue,
                 'name' => $fromCurrency,
             ],
             [

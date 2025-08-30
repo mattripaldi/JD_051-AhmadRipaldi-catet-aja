@@ -152,11 +152,25 @@ export const formatRelativeTime = (date) => {
 
 // Simple currency formatting for basic use cases
 export const formatSimpleCurrency = (amount) => {
-    const value = Math.abs(amount);
+    // Handle NaN, undefined, or null values
+    if (amount === null || amount === undefined || isNaN(amount) || !isFinite(amount)) {
+        amount = 0;
+    }
+
+    const absAmount = Math.abs(amount);
     const isNegative = amount < 0;
-    const formattedValue = value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const prefix = isNegative ? '-' : '';
+
+    // Format based on amount size with Indonesian abbreviations
+    if (absAmount >= 1000000000000) {
+        return `${prefix}${(absAmount / 1000000000000).toFixed(0)}T`;
+    } else if (absAmount >= 1000000000) {
+        return `${prefix}${(absAmount / 1000000000).toFixed(0)}M`;
+    } else if (absAmount >= 1000000) {
+        return `${prefix}${(absAmount / 1000000).toFixed(0)}Jt`;
+    }
     
-    return `${isNegative ? '-' : ''}${formattedValue}`;
+    return `${prefix}${absAmount.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
 };
 
 // Format amount as currency for input fields

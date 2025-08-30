@@ -1,7 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\OutcomeController;
@@ -25,18 +26,21 @@ Route::get('/', function () {
 })->name('welcome');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('ai-chat/send', [AiChatController::class, 'sendMessage'])->name('ai-chat.send');
+    Route::get('ai-chat/starters', [AiChatController::class, 'getStarters'])->name('ai-chat.starters');
+    
     Route::prefix('account')->group(function () {
         Route::get('/', [AccountController::class, 'index'])->name('account.index');
         Route::get('/create', [AccountController::class, 'create'])->name('account.create');
-        Route::get('/{account}/edit', [AccountController::class, 'edit'])->name('account.edit');
-        Route::get('/{account}/delete', [AccountController::class, 'confirmDelete'])->name('account.confirm-delete');
+        Route::get('/{account}/edit', [AccountController::class, 'edit'])->middleware('ensure.account.ownership')->name('account.edit');
+        Route::get('/{account}/delete', [AccountController::class, 'confirmDelete'])->middleware('ensure.account.ownership')->name('account.confirm-delete');
 
         Route::post('/', [AccountController::class, 'store'])->name('account.store');
-        Route::put('/{account}', [AccountController::class, 'update'])->name('account.update');
-        Route::delete('/{account}', [AccountController::class, 'destroy'])->name('account.destroy');
-        Route::post('/{account}/select', [AccountController::class, 'select'])->name('account.select');
+        Route::put('/{account}', [AccountController::class, 'update'])->middleware('ensure.account.ownership')->name('account.update');
+        Route::delete('/{account}', [AccountController::class, 'destroy'])->middleware('ensure.account.ownership')->name('account.destroy');
+        Route::post('/{account}/select', [AccountController::class, 'select'])->middleware('ensure.account.ownership')->name('account.select');
 
-        Route::prefix('{account}')->group(function () {
+        Route::prefix('{account}')->middleware('ensure.account.ownership')->group(function () {
 
             Route::get('/dashboard', DashboardController::class)->name('account.dashboard');
 

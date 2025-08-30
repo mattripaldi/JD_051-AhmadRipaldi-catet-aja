@@ -63,9 +63,12 @@ class CurrencyController extends Controller
 
         Log::info("Creating currency {$currencyCode} with exchange rate: {$exchangeRate}");
 
+        // Handle both model instances and IDs
+        $accountIdValue = is_object($accountId) ? $accountId->id : $accountId;
+
         Currency::create([
             'user_id' => Auth::id(),
-            'account_id' => $accountId,
+            'account_id' => $accountIdValue,
             'name' => $currencyCode,
             'symbol' => $request->symbol,
             'exchange_rate' => $exchangeRate,
@@ -81,11 +84,6 @@ class CurrencyController extends Controller
      */
     public function confirmDelete(Request $request, $accountId, Currency $currency)
     {
-        // Ensure the currency belongs to the authenticated user and is user-level
-        if ($currency->user_id !== Auth::id() || $currency->account_id !== (int) $accountId) {
-            abort(403);
-        }
-
         return Inertia::modal('settings/currency/Delete', [
             'currency' => $currency
         ])->baseRoute('currency.index', ['account' => $accountId]);
@@ -96,11 +94,6 @@ class CurrencyController extends Controller
      */
     public function destroy(Request $request, $accountId, Currency $currency)
     {
-        // Ensure the currency belongs to the authenticated user and is user-level
-        if ($currency->user_id !== Auth::id() || $currency->account_id !== (int) $accountId) {
-            abort(403);
-        }
-
         // Prevent deletion of IDR currency
         if ($currency->name === 'IDR') {
             return redirect()->back()->withErrors(['error' => 'Cannot delete IDR currency']);

@@ -1,4 +1,4 @@
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { IncomeBalanceCard } from './IncomeBalanceCard';
 import { PeriodSelector } from '../dashboard/PeriodSelector';
 import { Button } from '@/components/ui/button';
@@ -6,12 +6,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Check } from 'lucide-react';
 
 export function IncomeHeader({ stats, filters, onModeChange, onYearChange, onMonthChange, currencyBreakdown, availableCurrencies, currencies }) {
+    const { auth } = usePage().props;
+
     return (
         <div className="rounded-b-3xl bg-gradient-to-r from-green-500 to-green-600 px-3 py-4 text-white sm:px-4 sm:py-6">
             <div className="mb-4 flex items-center justify-between sm:mb-6">
                 <div className="flex items-center space-x-3">
                     <Link
-                        href="/dashboard"
+                        href={`/account/${auth.account.id}/income`}
                         className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 p-2 transition-colors hover:bg-white/30"
                     >
                         <img src="/logo-icon.svg" alt="Logo" className="h-full w-full object-contain" />

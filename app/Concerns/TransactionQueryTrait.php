@@ -22,12 +22,13 @@ trait TransactionQueryTrait
      * @param string $category
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    protected function buildTransactionQuery($type, $year, $month, $mode, $currencyId, $search = '', $category = null)
+    protected function buildTransactionQuery($type, $year, $month, $mode, $currencyId, $search = '', $category = null, $accountId = null)
     {
         $model = $type === 'income' ? Income::class : Outcome::class;
         $query = $model::query()
             ->with(['category', 'currency']) // Eager load category and currency to prevent N+1 queries
             ->where('user_id', Auth::id())
+            ->where('account_id', $accountId)
             ->whereYear('transaction_date', $year);
 
         // Add month filtering only if mode is 'month'
@@ -66,12 +67,13 @@ trait TransactionQueryTrait
      * @param int|null $currencyId
      * @return array
      */
-    protected function getOptimizedTransactionTotals($type, $year, $month, $mode, $currencyId)
+    protected function getOptimizedTransactionTotals($type, $year, $month, $mode, $currencyId, $accountId = null)
     {
         $model = $type === 'income' ? Income::class : Outcome::class;
         $query = $model::query()
             ->selectRaw('SUM(amount) as total, COUNT(*) as count')
             ->where('user_id', Auth::id())
+            ->where('account_id', $accountId)
             ->whereYear('transaction_date', $year);
             
         // Add month filtering only if mode is 'month'
@@ -100,12 +102,13 @@ trait TransactionQueryTrait
      * @param int|null $currencyId
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    protected function getAllTransactionsForCalculations($type, $year, $month, $mode, $currencyId)
+    protected function getAllTransactionsForCalculations($type, $year, $month, $mode, $currencyId, $accountId = null)
     {
         $model = $type === 'income' ? Income::class : Outcome::class;
         $query = $model::query()
             ->select(['amount', 'currency_id', 'transaction_date']) // Only select needed columns
             ->where('user_id', Auth::id())
+            ->where('account_id', $accountId)
             ->whereYear('transaction_date', $year);
             
         // Add month filtering only if mode is 'month'
@@ -128,7 +131,7 @@ trait TransactionQueryTrait
      * @param int|null $currencyId
      * @return array
      */
-    protected function getOptimizedPreviousPeriodTotals($year, $month, $mode, $currencyId, $type)
+    protected function getOptimizedPreviousPeriodTotals($year, $month, $mode, $currencyId, $type, $accountId = null)
     {
         if ($mode === 'month') {
             $previousMonth = $month == 1 ? 12 : $month - 1;
@@ -143,6 +146,7 @@ trait TransactionQueryTrait
         $query = $model::query()
             ->selectRaw('SUM(amount) as total')
             ->where('user_id', Auth::id())
+            ->where('account_id', $accountId)
             ->whereYear('transaction_date', $previousYear);
             
         // Add month filtering only if mode is 'month'
@@ -177,7 +181,7 @@ trait TransactionQueryTrait
      * @param int|null $currencyId
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    protected function getPreviousPeriodTransactions($year, $month, $mode, $currencyId, $type)
+    protected function getPreviousPeriodTransactions($year, $month, $mode, $currencyId, $type, $accountId = null)
     {
         if ($mode === 'month') {
             $previousMonth = $month == 1 ? 12 : $month - 1;
@@ -192,6 +196,7 @@ trait TransactionQueryTrait
         $query = $model::query()
             ->select(['amount', 'currency_id', 'transaction_date']) // Only select needed columns
             ->where('user_id', Auth::id())
+            ->where('account_id', $accountId)
             ->whereYear('transaction_date', $previousYear);
             
         // Add month filtering only if mode is 'month'

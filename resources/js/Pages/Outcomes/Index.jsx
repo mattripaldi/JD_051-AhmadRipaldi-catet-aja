@@ -1,5 +1,6 @@
 import MobileLayout from '@/layouts/mobile-layout';
 import { formatRelativeTime, formatSimpleCurrency } from '@/utils/formatters';
+import { ChatBubble } from '@/components/ai/ChatBubble';
 
 import { Head, usePage, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
@@ -187,7 +188,7 @@ export default function IndexOutcome({ transactions: initialTransactions, filter
                                 <div className="mb-1 flex items-center justify-between">
                                     <h3 className="text-lg font-bold text-gray-800">Riwayat Pengeluaran</h3>
                                 </div>
-                                <p className="mb-4 text-sm text-gray-500">Transaksi pengeluaran Anda</p>
+                                <p className="text-sm text-gray-500">Transaksi pengeluaran Anda</p>
                             </div>
 
                             <div className="space-y-1">
@@ -428,7 +429,23 @@ export default function IndexOutcome({ transactions: initialTransactions, filter
 
             </div>
             
-            {/* Fixed Floating Action Button */}
+            <div className="fixed bottom-52 right-1/2 transform translate-x-1/2 max-w-[480px] w-full">
+                <div className="absolute right-4">
+                    <ChatBubble
+                        context="outcome"
+                        contextData={{
+                            accountId: auth.account.id,
+                            transactions: initialTransactions,
+                            filters,
+                            stats,
+                            currencyBreakdown,
+                            currencies,
+                            availableCurrencies
+                        }}
+                    />
+                </div>
+            </div>
+
             <div className="fixed bottom-36 right-1/2 transform translate-x-1/2 max-w-[480px] w-full">
                 <div className="absolute right-4">
                     <ModalLink

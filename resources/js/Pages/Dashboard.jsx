@@ -1,6 +1,7 @@
 import AnalyticsOverview from '@/components/dashboard/AnalyticsOverview';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import MobileLayout from '@/layouts/mobile-layout';
+import { ChatBubble } from '@/components/ai/ChatBubble';
 import { Head, router } from '@inertiajs/react';
 
 export default function Dashboard({
@@ -47,6 +48,24 @@ export default function Dashboard({
                         recentTransactions={recentTransactions}
                         currencyBreakdown={currencyBreakdown}
                         availableCurrencies={availableCurrencies}
+                    />
+                </div>
+            </div>
+
+            <div className="fixed bottom-36 right-1/2 transform translate-x-1/2 max-w-[480px] w-full">
+                <div className="absolute right-4">
+                    <ChatBubble
+                        context="dashboard"
+                        contextData={{
+                            accountId: account.id,
+                            account,
+                            stats,
+                            chartData,
+                            recentTransactions,
+                            filters,
+                            currencyBreakdown,
+                            availableCurrencies
+                        }}
                     />
                 </div>
             </div>

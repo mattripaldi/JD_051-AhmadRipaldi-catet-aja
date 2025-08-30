@@ -16,6 +16,10 @@ class Currency extends Model
         'exchange_rate',
     ];
 
+    protected $attributes = [
+        'account_id' => null,
+    ];
+
     protected $casts = [
         'exchange_rate' => 'decimal:2',
     ];
@@ -34,9 +38,7 @@ class Currency extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
-    }
-
-    /**
+    }    /**
      * Get exchange rate for specific currencies and user
      *
      * @param string $fromCurrency
@@ -51,11 +53,16 @@ class Currency extends Model
             ->where('name', $fromCurrency);
 
         if ($accountId) {
-            $query->where('account_id', $accountId);
+            $query->where(function ($q) use ($accountId) {
+                $q->where('account_id', $accountId)
+                  ->orWhereNull('account_id');
+            });
+        } else {
+            $query->whereNull('account_id');
         }
 
         $currency = $query->first();
-        
+
         return $currency ? (float) $currency->exchange_rate : null;
     }
 
@@ -65,7 +72,7 @@ class Currency extends Model
      * @param string $fromCurrency
      * @param string $toCurrency
      * @param int $userId
-     * @param int $accountId
+     * @param int|null $accountId
      * @param float $rate
      * @param string $symbol
      * @return static
@@ -74,7 +81,7 @@ class Currency extends Model
         string $fromCurrency,
         string $toCurrency,
         int $userId,
-        int $accountId,
+        ?int $accountId = null,
         float $rate,
         string $symbol = ''
     ): static {

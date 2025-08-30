@@ -144,15 +144,50 @@ class CurrencyService
     {
         // Try to get the rate from the database
         $rate = Currency::getRate($fromCurrency, $toCurrency, $userId, $accountId);
-        
+
         // If no rate found, use the latest rate
         if ($rate === null) {
             $yearMonth = ($year && $month) ? "$year-$month" : 'current month';
             Log::warning("No {$fromCurrency} to {$toCurrency} rate found for user {$userId} for {$yearMonth}, using latest rate");
             return $this->getExchangeRate($fromCurrency, $toCurrency, $userId, $accountId);
         }
-        
+
         return $rate;
+    }
+
+    /**
+     * Get fresh exchange rate from API (bypass cache)
+     * Used for new currencies that don't exist in database yet
+     *
+     * @param string $fromCurrency
+     * @param string $toCurrency
+     * @return float
+     */
+    public function getFreshExchangeRate(string $fromCurrency, string $toCurrency): float
+    {
+        try {
+            // Try open.er-api.com for all currency pairs
+            $response = Http::get("https://open.er-api.com/v6/latest/{$fromCurrency}");
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $apiRate = $data['rates'][$toCurrency] ?? null;
+
+                if ($apiRate) {
+                    Log::info("Fresh exchange rate for {$fromCurrency} to {$toCurrency}: {$apiRate}");
+                    return $apiRate;
+                } else {
+                    Log::warning("API response successful but no rate found for {$toCurrency} in response: " . json_encode($data['rates'] ?? []));
+                }
+            } else {
+                Log::error("API request failed for {$fromCurrency} to {$toCurrency}. Status: " . $response->status());
+            }
+
+            return 1.0;
+        } catch (\Exception $e) {
+            Log::error('Error fetching fresh currency rates: ' . $e->getMessage());
+            return 1.0;
+        }
     }
 
     /**
@@ -388,6 +423,30 @@ class CurrencyService
         string $symbol = ''
     ): Currency {
         return Currency::updateOrCreateRate($fromCurrency, $toCurrency, $userId, $accountId, $rate, $symbol);
+    }
+
+    /**
+     * Validate currency code against the exchange rate API
+     *
+     * @param string $currencyCode
+     * @return bool
+     */
+    public function validateCurrencyCode(string $currencyCode): bool
+    {
+        try {
+            $response = Http::get("https://open.er-api.com/v6/latest/IDR");
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $rates = $data['rates'] ?? [];
+
+                return isset($rates[$currencyCode]);
+            }
+
+            return false;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     /**

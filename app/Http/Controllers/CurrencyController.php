@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Models\Currency;
 use App\Services\CurrencyService;
@@ -17,25 +19,29 @@ class CurrencyController extends Controller
         $this->currencyService = $currencyService;
     }
 
+
+
     /**
      * Get all currencies for the authenticated user
      */
-    public function index(Request $request, $accountId)
+    public function index($accountId)
     {
-        $currencies = Currency::where('user_id', Auth::id())
-            ->where('account_id', $accountId)
-            ->orderBy('name')
-            ->get()
-            ->map(function ($currency) {
-                return [
-                    'id' => $currency->id,
-                    'name' => $currency->name,
-                    'symbol' => $currency->symbol,
-                    'exchange_rate' => (float) $currency->exchange_rate,
-                ];
-            });
+        $currencies = Auth::user()->currencies()
+                        ->orderBy('name')
+                        ->get();
 
-        return response()->json($currencies);
+        return Inertia::render('settings/currency/Index', [
+            'currencies' => $currencies,
+        ]);
+    }
+
+    /**
+     * Show create currency modal
+     */
+    public function create(Request $request, $accountId)
+    {
+        return Inertia::modal('settings/currency/Create')
+                    ->baseRoute('currency.index', ['account' => $accountId]);
     }
 
     /**
@@ -44,83 +50,74 @@ class CurrencyController extends Controller
     public function store(Request $request, $accountId)
     {
         $request->validate([
-            'name' => 'required|string|max:3|unique:currencies,name,NULL,id,user_id,' . Auth::id() . ',account_id,' . $accountId,
+            'name' => 'required|string|max:3|unique:currencies,name,NULL,id,user_id,' . Auth::id(),
             'symbol' => 'required|string|max:10',
-            'exchange_rate' => 'required|numeric|min:0',
         ]);
 
-        $currency = Currency::create([
-            'user_id' => Auth::id(),
-            'account_id' => $accountId,
-            'name' => strtoupper($request->name),
-            'symbol' => $request->symbol,
-            'exchange_rate' => $request->exchange_rate,
-        ]);
+        $currencyCode = strtoupper($request->name);
 
-        return response()->json([
-            'id' => $currency->id,
-            'name' => $currency->name,
-            'symbol' => $currency->symbol,
-            'exchange_rate' => (float) $currency->exchange_rate,
-        ], 201);
-    }
-
-    /**
-     * Update an existing currency
-     */
-    public function update(Request $request, $accountId, Currency $currency)
-    {
-        // Ensure the currency belongs to the authenticated user and account
-        if ($currency->user_id !== Auth::id() || $currency->account_id != $accountId) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        // Validate currency code against API
+        if (!$this->currencyService->validateCurrencyCode($currencyCode)) {
+            return redirect()->back()->withErrors(['name' => 'Kode Mata Uang Tidak Ditemukan']);
         }
 
-        $request->validate([
-            'name' => 'required|string|max:3|unique:currencies,name,' . $currency->id . ',id,user_id,' . Auth::id() . ',account_id,' . $accountId,
-            'symbol' => 'required|string|max:10',
-            'exchange_rate' => 'required|numeric|min:0',
-        ]);
+        // Automatically fetch fresh exchange rate from API (bypass cache for new currencies)
+        $exchangeRate = $this->currencyService->getFreshExchangeRate($currencyCode, 'IDR');
 
-        $currency->update([
-            'name' => strtoupper($request->name),
+        Log::info("Creating currency {$currencyCode} with exchange rate: {$exchangeRate}");
+
+        Currency::create([
+            'user_id' => Auth::id(),
+            'account_id' => $accountId,
+            'name' => $currencyCode,
             'symbol' => $request->symbol,
-            'exchange_rate' => $request->exchange_rate,
+            'exchange_rate' => $exchangeRate,
         ]);
 
-        return response()->json([
-            'id' => $currency->id,
-            'name' => $currency->name,
-            'symbol' => $currency->symbol,
-            'exchange_rate' => (float) $currency->exchange_rate,
-            'created_at' => $currency->created_at,
-            'updated_at' => $currency->updated_at,
-        ]);
+        return redirect()->back()->with('success', 'Currency created successfully!');
+    }
+
+
+
+    /**
+     * Show delete currency confirmation modal
+     */
+    public function confirmDelete(Request $request, $accountId, Currency $currency)
+    {
+        // Ensure the currency belongs to the authenticated user and is user-level
+        if ($currency->user_id !== Auth::id() || $currency->account_id !== (int) $accountId) {
+            abort(403);
+        }
+
+        return Inertia::modal('settings/currency/Delete', [
+            'currency' => $currency
+        ])->baseRoute('currency.index', ['account' => $accountId]);
     }
 
     /**
      * Delete a currency
      */
-    public function destroy($accountId, Currency $currency)
+    public function destroy(Request $request, $accountId, Currency $currency)
     {
-        // Ensure the currency belongs to the authenticated user and account
-        if ($currency->user_id !== Auth::id() || $currency->account_id != $accountId) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        // Ensure the currency belongs to the authenticated user and is user-level
+        if ($currency->user_id !== Auth::id() || $currency->account_id !== (int) $accountId) {
+            abort(403);
         }
 
         // Prevent deletion of IDR currency
         if ($currency->name === 'IDR') {
-            return response()->json(['error' => 'Cannot delete IDR currency'], 400);
+            return redirect()->back()->withErrors(['error' => 'Cannot delete IDR currency']);
         }
 
         $currency->delete();
 
-        return response()->json(['message' => 'Currency deleted successfully']);
+        return redirect()->route('currency.index', ['account' => $accountId])->with('success', 'Currency deleted successfully!');
     }
 
     /**
      * Get supported currencies list (for reference)
      */
-    public function supportedCurrencies($accountId)
+    public function supportedCurrencies(Request $request, $accountId)
     {
         $supportedCurrencies = [
             ['code' => 'IDR', 'name' => 'Indonesian Rupiah', 'symbol' => 'Rp'],
@@ -139,12 +136,11 @@ class CurrencyController extends Controller
     }
 
     /**
-     * Ensure user has default IDR currency for specific account
+     * Ensure user has default IDR currency
      */
-    public function ensureDefaultCurrency($accountId)
+    public function ensureDefaultCurrency(Request $request, $accountId)
     {
         $existingIdr = Currency::where('user_id', Auth::id())
-            ->where('account_id', $accountId)
             ->where('name', 'IDR')
             ->first();
 

@@ -13,7 +13,8 @@ import {
     Check,
     X,
     ChevronRight,
-    LogOut
+    LogOut,
+    DollarSign
 } from 'lucide-react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Transition } from '@headlessui/react';
@@ -226,6 +227,18 @@ export default function NewProfile({ mustVerifyEmail, status }) {
                             <div className="flex items-center">
                                 <Mail size={16} className="text-gray-400 mr-3" />
                                 <span className="text-gray-900">{auth.user.email}</span>
+                            </div>
+                            <div className="border-t border-gray-100 pt-3">
+                                <Link
+                                    href={route('currency.index', { account: auth.user.current_account_id })}
+                                    className="flex items-center justify-between h-12 px-1 hover:bg-gray-50 -mx-1 rounded-lg transition-colors"
+                                >
+                                    <div className="flex items-center">
+                                        <DollarSign size={16} className="text-gray-400 mr-3" />
+                                        <span className="text-gray-900">Kelola Mata Uang</span>
+                                    </div>
+                                    <ChevronRight size={16} className="text-gray-400" />
+                                </Link>
                             </div>
                         </div>
                     )}

@@ -54,4 +54,12 @@ class User extends Authenticatable
         return $this->belongsTo(Account::class, 'current_account_id');
     }
 
+    /**
+     * Get the currencies for the user.
+     */
+    public function currencies()
+    {
+        return $this->hasMany(Currency::class);
+    }
+
 }

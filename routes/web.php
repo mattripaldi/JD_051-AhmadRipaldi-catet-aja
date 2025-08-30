@@ -1,11 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AccountController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncomeController;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\OutcomeController;
 use App\Http\Controllers\CurrencyController;
+use App\Http\Controllers\DashboardController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -24,15 +24,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{account}/select', [AccountController::class, 'select'])->name('account.select');
 
         Route::prefix('{account}')->group(function () {
-            
-            Route::prefix('currency')->group(function () {
-                Route::get('/', [CurrencyController::class, 'index'])->name('currency.index');
-                Route::post('/', [CurrencyController::class, 'store'])->name('currency.store');
-                Route::put('/{currency}', [CurrencyController::class, 'update'])->name('currency.update');
-                Route::delete('/{currency}', [CurrencyController::class, 'destroy'])->name('currency.destroy');
-                Route::get('/supported', [CurrencyController::class, 'supportedCurrencies'])->name('currency.supported');
-                Route::post('/ensure-default', [CurrencyController::class, 'ensureDefaultCurrency'])->name('currency.ensure-default');
-            });
+
             Route::get('/dashboard', DashboardController::class)->name('account.dashboard');
 
             // Income Routes
@@ -52,6 +44,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/outcome', [OutcomeController::class, 'store'])->name('outcome.store');
             Route::put('/outcome/{outcome}', [OutcomeController::class, 'update'])->name('outcome.update');
             Route::delete('/outcome/{outcome}', [OutcomeController::class, 'destroy'])->name('outcome.destroy');
+
+            // Currency management routes
+            Route::get('/currency', [CurrencyController::class, 'index'])->name('currency.index');
+            Route::get('/currency/create', [CurrencyController::class, 'create'])->name('currency.create');
+            Route::get('/currency/{currency}/delete', [CurrencyController::class, 'confirmDelete'])->name('currency.confirm-delete');
+            Route::post('/currency', [CurrencyController::class, 'store'])->name('currency.store');
+            Route::delete('/currency/{currency}', [CurrencyController::class, 'destroy'])->name('currency.destroy');
+            Route::get('/currency/supported', [CurrencyController::class, 'supportedCurrencies'])->name('currency.supported');
+            Route::post('/currency/ensure-default', [CurrencyController::class, 'ensureDefaultCurrency'])->name('currency.ensure-default');
         });
     });
 

@@ -30,28 +30,29 @@ class AiCategorizationService
     
     /**
      * Categorize a transaction based on its description
-     * 
+     *
      * @param Transaction|string $transaction Transaction object or description string
      * @return Category|null
      */
     public function categorizeTransaction($transaction)
     {
-        // Get the description from the transaction
+        // Get the description and user_id from the transaction
         $description = is_string($transaction) ? $transaction : $transaction->description;
+        $userId = is_string($transaction) ? null : $transaction->user_id;
         
         // Check if this is a zakat-related transaction (do this before cache check)
         if ($this->isZakatTransaction($description)) {
-            return $this->findOrCreateCategory('Zakat');
+            return $this->findOrCreateCategory('Zakat', $userId);
         }
-        
+
         // Check if this is a THR-related transaction (holiday allowance)
         if ($this->isThrTransaction($description)) {
-            return $this->findOrCreateCategory('Pendapatan');
+            return $this->findOrCreateCategory('Pendapatan', $userId);
         }
-        
+
         // Special case for "tempe" to ensure it's always categorized correctly
         if (strtolower(trim($description)) === 'tempe' || preg_match('/\btempe\b/i', $description)) {
-            return $this->findOrCreateCategory('Makanan');
+            return $this->findOrCreateCategory('Makanan', $userId);
         }
         
         // Normalize the description for better matching
@@ -62,12 +63,12 @@ class AiCategorizationService
         if (Cache::has($cacheKey)) {
             $categoryName = Cache::get($cacheKey);
             if (!empty($categoryName)) {
-                return $this->findOrCreateCategory($categoryName);
+                return $this->findOrCreateCategory($categoryName, $userId);
             }
         }
-        
+
         // Check for similar descriptions in cache
-        $similarCategory = $this->findSimilarCachedCategory($normalizedDescription);
+        $similarCategory = $this->findSimilarCachedCategory($normalizedDescription, $userId);
         if ($similarCategory instanceof Category) {
             return $similarCategory;
         }
@@ -127,7 +128,7 @@ CRITICAL RULES:
 16. IMPORTANT: "Tempe" is an Indonesian food item and should ALWAYS be categorized as "Makanan", not "Hiburan".
 17. Do not confuse "Tempe" (Indonesian food) with "Temple" (place of worship).
 18. Any income, payment received, or money coming in should ALWAYS be categorized as "Pendapatan".
-19. Transactions containing "Bayar hutang", "Bayar utang", "Jual", "Penjualan", or "Serdos" should ALWAYS be categorized as "Pendapatan".
+19. Transactions containing "Bayar hutang", "Bayar utang", "Jual", "Penjualan" should ALWAYS be categorized as "Pendapatan".
 20. IMPORTANT: Indonesian food items like Dawet, Soto, Bakso, Pecel, Gado-gado, Rendang, etc. should ALWAYS be categorized as "Makanan".
 21. IMPORTANT: If a transaction contains both jajan/snack keywords AND income keywords, prioritize categorizing it as "Jajan" not "Pendapatan".
 22. IMPORTANT: If a transaction contains the word "Hutang" or "Utang" (taking a loan, debt), categorize it as "Hutang".
@@ -184,7 +185,6 @@ EXAMPLES OF CORRECT RESPONSES:
 - "Bayar utang cicilan" → "Pendapatan"
 - "Jual motor bekas" → "Pendapatan"
 - "Penjualan barang online" → "Pendapatan"
-- "Serdos semester ganjil" → "Pendapatan"
 - "Donasi untuk bencana" → "Amal"
 - "Bayar zakat" → "Zakat"
 - "Zakat penghasilan" → "Zakat"
@@ -314,7 +314,7 @@ EXAMPLES OF CORRECT RESPONSES:
                 }
                 
                 // Find or create the category
-                return $this->findOrCreateCategory($categoryName);
+                return $this->findOrCreateCategory($categoryName, $userId);
             } catch (\Exception $e) {
                 $lastException = $e;
                 
@@ -346,16 +346,17 @@ EXAMPLES OF CORRECT RESPONSES:
         ]);
         
         // Return Lain-lain category instead of null
-        return $this->findOrCreateCategory('Lain-lain');
+        return $this->findOrCreateCategory('Lain-lain', $userId);
     }
     
     /**
      * Find or create a category by name
-     * 
+     *
      * @param string $name
+     * @param int|null $userId
      * @return Category
      */
-    public function findOrCreateCategory($name)
+    public function findOrCreateCategory($name, $userId = null)
     {
         if (empty($name)) {
             return null;
@@ -451,10 +452,16 @@ EXAMPLES OF CORRECT RESPONSES:
             ]);
         }
         
-        return Category::firstOrCreate(
-            ['name' => $name],
-            ['description' => 'Auto-generated category', 'icon' => $icon]
-        );
+        $attributes = ['name' => $name];
+        $values = ['description' => 'Auto-generated category', 'icon' => $icon];
+
+        // Add user_id to the query if provided
+        if ($userId !== null) {
+            $attributes['user_id'] = $userId;
+            $values['user_id'] = $userId;
+        }
+
+        return Category::firstOrCreate($attributes, $values);
     }
     
     /**
@@ -899,11 +906,12 @@ EXAMPLES OF CORRECT RESPONSES:
     
     /**
      * Find a similar cached category based on description similarity
-     * 
+     *
      * @param string $description
+     * @param int|null $userId
      * @return Category|null
      */
-    private function findSimilarCachedCategory(string $description): ?Category
+    private function findSimilarCachedCategory(string $description, $userId = null): ?Category
     {
         // Get all cached keys
         $cacheKeys = Cache::get($this->cacheKeysKey, []);
@@ -941,7 +949,7 @@ EXAMPLES OF CORRECT RESPONSES:
                         Cache::put($this->cacheKeysKey, $cacheKeys, $this->cacheTtl * 60);
                     }
                     
-                    return $this->findOrCreateCategory($categoryName);
+                    return $this->findOrCreateCategory($categoryName, $userId);
                 }
             }
         }
@@ -983,20 +991,21 @@ EXAMPLES OF CORRECT RESPONSES:
         // First pass: check cache for all transactions
         foreach ($transactions as $transaction) {
             $description = is_string($transaction) ? $transaction : $transaction->description;
+            $userId = is_string($transaction) ? null : $transaction->user_id;
             $normalizedDescription = $this->normalizeDescription($description);
-            
+
             // Check direct cache hit
             $cacheKey = $this->generateCacheKey($normalizedDescription);
             if (Cache::has($cacheKey)) {
                 $categoryName = Cache::get($cacheKey);
                 if (!empty($categoryName)) {
-                    $results[$description] = $this->findOrCreateCategory($categoryName);
+                    $results[$description] = $this->findOrCreateCategory($categoryName, $userId);
                     continue;
                 }
             }
             
             // Check for similar descriptions
-            $similarCategory = $this->findSimilarCachedCategory($normalizedDescription);
+            $similarCategory = $this->findSimilarCachedCategory($normalizedDescription, $userId);
             if ($similarCategory instanceof Category) {
                 $results[$description] = $similarCategory;
                 continue;
@@ -1618,7 +1627,7 @@ EXAMPLES OF CORRECT RESPONSES:
             'Pendapatan', 'Gaji', 'Bonus', 'Upah', 'Salary', 'Income', 'Fee', 
             'Komisi', 'Royalti', 'Dividen', 'THR', 'Cashback', 'Refund', 
             'Reward', 'Profit', 'Laba', 'Hadiah', 'Transfer Masuk', 'Bayar Hutang',
-            'Bayar Utang', 'Jual', 'Penjualan', 'Penyewaan', 'Sewa', 'Serdos', 'Pembayaran', 'Honorarium'
+            'Bayar Utang', 'Jual', 'Penjualan', 'Penyewaan', 'Sewa', 'Pembayaran', 'Honorarium'
         ];
         
         // Check for income terms but make sure it's not jajan-related
@@ -1629,8 +1638,7 @@ EXAMPLES OF CORRECT RESPONSES:
             strpos(strtolower($categoryName), 'honor') !== false ||
             strpos(strtolower($categoryName), 'jual') !== false ||
             strpos(strtolower($categoryName), 'bayar hutang') !== false ||
-            strpos(strtolower($categoryName), 'bayar utang') !== false ||
-            strpos(strtolower($categoryName), 'serdos') !== false) && 
+            strpos(strtolower($categoryName), 'bayar utang') !== false) && 
             !$this->isJajanRelated($categoryName)) {
             return 'Pendapatan';
         }

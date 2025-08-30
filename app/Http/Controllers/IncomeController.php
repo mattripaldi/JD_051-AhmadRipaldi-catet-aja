@@ -193,10 +193,10 @@ class IncomeController extends Controller
 
         // Determine period names for display
         if ($mode === 'month') {
-            $currentPeriodName = date('F Y', mktime(0, 0, 0, $month, 1, $year));
+            $currentPeriodName = Carbon::create($year, $month, 1)->locale('id')->isoFormat('MMMM YYYY');
             $previousMonth = $month == 1 ? 12 : $month - 1;
             $previousYear = $month == 1 ? $year - 1 : $year;
-            $previousPeriodName = date('F Y', mktime(0, 0, 0, $previousMonth, 1, $previousYear));
+            $previousPeriodName = Carbon::create($previousYear, $previousMonth, 1)->locale('id')->isoFormat('MMMM YYYY');
         } else {
             $currentPeriodName = (string) $year;
             $previousPeriodName = (string) ($year - 1);
@@ -271,9 +271,8 @@ class IncomeController extends Controller
             'currency_id' => $request->currency_id
         ]);
 
-        // // Temporary Disable
-        // // Dispatch job to categorize the transaction
-        // CategorizeTransactionJob::dispatch($transaction);
+        // Dispatch job to categorize the transaction
+        CategorizeTransactionJob::dispatch($transaction);
 
         // Preserve current filter parameters
         $redirectParams = [];
@@ -303,11 +302,9 @@ class IncomeController extends Controller
             'currency_id' => $request->currency_id
         ]);
 
-        // // Temporary Disable
-        // // If description changed, dispatch job to recategorize the transaction
-        // if ($descriptionChanged) {
-        //     CategorizeTransactionJob::dispatch($income, true);
-        // }
+        if ($descriptionChanged) {
+            CategorizeTransactionJob::dispatch($income, true);
+        }
 
         // Preserve current filter parameters
         $redirectParams = [];

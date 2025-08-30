@@ -151,14 +151,12 @@ export const formatRelativeTime = (date) => {
 };
 
 // Simple currency formatting for basic use cases
-export const formatSimpleCurrency = (amount, currency = 'IDR') => {
+export const formatSimpleCurrency = (amount) => {
     const value = Math.abs(amount);
     const isNegative = amount < 0;
-    const symbol = getCurrencySymbol(currency);
     const formattedValue = value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    const needsSpace = ['Rp', 'CHF', 'RM'].includes(symbol);
-    const space = needsSpace ? ' ' : '';
-    return `${isNegative ? '-' : ''}${symbol}${space}${formattedValue}`;
+    
+    return `${isNegative ? '-' : ''}${formattedValue}`;
 };
 
 // Format amount as currency for input fields

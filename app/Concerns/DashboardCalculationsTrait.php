@@ -84,9 +84,9 @@ trait DashboardCalculationsTrait
         $outcomeChange = $this->calculatePercentageChange($totalOutcome, $previousMonthOutcome);
         $balanceChange = $this->calculateBalanceChange($balance, $previousBalance);
 
-        // Get the month names for display
-        $currentMonthName = date('F', mktime(0, 0, 0, $month, 1));
-        $previousMonthName = date('F', mktime(0, 0, 0, $previousMonth, 1));
+        // Get the month names for display in Indonesian
+        $currentMonthName = Carbon::create($year, $month, 1)->locale('id')->isoFormat('MMMM');
+        $previousMonthName = Carbon::create($previousYear, $previousMonth, 1)->locale('id')->isoFormat('MMMM');
 
         $currentPeriod = "$currentMonthName $year";
         $previousPeriod = "$previousMonthName $previousYear";
@@ -357,7 +357,7 @@ trait DashboardCalculationsTrait
             $income = (float) ($incomeResults->get($month)->total ?? 0);
             $outcome = abs((float) ($outcomeResults->get($month)->total ?? 0));
 
-            $monthName = date('M', mktime(0, 0, 0, $month, 1));
+            $monthName = Carbon::create($year, $month, 1)->locale('id')->isoFormat('MMM');
 
             $monthlyData[] = [
                 'name' => $monthName,

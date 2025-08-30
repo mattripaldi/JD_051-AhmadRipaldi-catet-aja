@@ -1,6 +1,6 @@
 import MobileLayout from '@/layouts/mobile-layout';
 import { formatRelativeTime, formatSimpleCurrency } from '@/utils/formatters';
-import { getCategoryIconSimple, getCategoryColorSimple, getCategoryIconColorSimple } from '@/utils/transaction-helpers';
+
 import { Head, usePage, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -184,14 +184,18 @@ export default function IndexIncome({ transactions: initialTransactions, filters
 
                             <div className="space-y-1">
                                 {filteredTransactions.map((transaction) => {
-                                    const IconComponent = getCategoryIconSimple(transaction.category_icon);
+                                    
+                                    const selectedCurrency = currencies.find(c => c.id == selectedCurrencyId);
+                                    const currencySymbol = selectedCurrency ? selectedCurrency.symbol : 'Rp';
+                                    const currencyName = selectedCurrency ? selectedCurrency.name : 'IDR';
+
                                     return (
                                         <div key={transaction.id} className="px-4 py-4 transition-colors hover:bg-gray-50">
                                             <div className="flex items-center space-x-4">
-                                                <div
-                                                    className={`flex h-10 w-10 items-center justify-center rounded-full ${getCategoryColorSimple(transaction.category_icon)}`}
-                                                >
-                                                    <IconComponent size={20} className={getCategoryIconColorSimple(transaction.category_icon)} />
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-700">
+                                                    <span className="text-sm font-semibold">
+                                                        {currencyName}
+                                                    </span>
                                                 </div>
 
                                                 <div className="min-w-0 flex-1">
@@ -207,7 +211,7 @@ export default function IndexIncome({ transactions: initialTransactions, filters
                                                 <div className="flex items-center space-x-3 text-right">
                                                     <div>
                                                         <p className={`font-semibold text-green-600 text-sm`}>
-                                                            {formatSimpleCurrency(transaction.amount, filters.currency ?? 'IDR')}
+                                                            {currencySymbol}{formatSimpleCurrency(transaction.amount)}
                                                         </p>
                                                     </div>
                                                     <div>

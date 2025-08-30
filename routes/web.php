@@ -51,8 +51,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/currency/{currency}/delete', [CurrencyController::class, 'confirmDelete'])->name('currency.confirm-delete');
             Route::post('/currency', [CurrencyController::class, 'store'])->name('currency.store');
             Route::delete('/currency/{currency}', [CurrencyController::class, 'destroy'])->name('currency.destroy');
-            Route::get('/currency/supported', [CurrencyController::class, 'supportedCurrencies'])->name('currency.supported');
-            Route::post('/currency/ensure-default', [CurrencyController::class, 'ensureDefaultCurrency'])->name('currency.ensure-default');
         });
     });
 

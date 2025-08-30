@@ -45,6 +45,10 @@ export const formatNumber = (value) => {
 };
 
 export const formatPercentage = (value) => {
+    // Handle NaN, undefined, or null values
+    if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
+        value = 0;
+    }
     return `${value.toFixed(1)}%`;
 };
 
@@ -183,14 +187,19 @@ export const formatCurrencyInput = (value) => {
 
 // Dynamic compact number formatter for any currency
 export const formatCompactNumber = (amount, currencySymbol = 'Rp') => {
+    // Handle NaN, undefined, or null values
+    if (amount === null || amount === undefined || isNaN(amount) || !isFinite(amount)) {
+        amount = 0;
+    }
+
     const absAmount = Math.abs(amount);
     const isNegative = amount < 0;
     const prefix = isNegative ? '-' : '';
-    
+
     // Determine if we should use space after symbol (for Rp and some others)
     const needsSpace = ['Rp', 'CHF', 'RM'].includes(currencySymbol);
     const space = needsSpace ? ' ' : '';
-    
+
     // Format based on amount size with Indonesian abbreviations
     if (absAmount >= 1000000000000) {
         return `${prefix}${currencySymbol}${space}${(absAmount / 1000000000000).toFixed(1)}T`;

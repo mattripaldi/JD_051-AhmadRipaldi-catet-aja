@@ -11,7 +11,7 @@ export function AccountHeader() {
                     <img src="/logo-icon.svg" alt="Logo" className="h-full w-full object-contain" />
                 </Link>
                 <div>
-                    <h1 className="text-lg font-bold sm:text-xl">Catet Dulu</h1>
+                    <h1 className="text-lg font-bold sm:text-xl">Dashboard</h1>
                     <p className="text-xs text-green-100 sm:text-sm">Teman Keuanganmu</p>
                 </div>
             </div>

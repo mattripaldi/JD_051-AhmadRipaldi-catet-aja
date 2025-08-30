@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import React, { useRef, useState, useEffect } from 'react';
 
-export default function NewOutcome({ transactions: initialTransactions, filters, stats, currencyBreakdown, currencies }) {
+export default function IndexOutcome({ transactions: initialTransactions, filters, stats, currencyBreakdown, currencies }) {
     const { auth } = usePage().props;
 
     // Server-side search state
@@ -100,7 +100,7 @@ export default function NewOutcome({ transactions: initialTransactions, filters,
                                 href="/dashboard"
                                 className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 p-2 transition-colors hover:bg-white/30"
                             >
-                                <img src="/logo-icon.svg" alt="Catet Dulu Logo" className="h-full w-full object-contain" />
+                                <img src="/logo-icon.svg" alt="Logo" className="h-full w-full object-contain" />
                             </Link>
                             <div>
                                 <h1 className="text-lg font-bold sm:text-xl">Pengeluaran</h1>
@@ -163,7 +163,7 @@ export default function NewOutcome({ transactions: initialTransactions, filters,
                                 href="/account"
                                 className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-medium"
                             >
-                                Change Account
+                                Ganti Akun
                             </Link>
                         </div>
                     </div>

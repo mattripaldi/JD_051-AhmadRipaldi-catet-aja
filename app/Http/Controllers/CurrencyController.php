@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Models\Currency;
@@ -18,8 +17,6 @@ class CurrencyController extends Controller
     {
         $this->currencyService = $currencyService;
     }
-
-
 
     /**
      * Get all currencies for the authenticated user
@@ -112,48 +109,5 @@ class CurrencyController extends Controller
         $currency->delete();
 
         return redirect()->route('currency.index', ['account' => $accountId])->with('success', 'Currency deleted successfully!');
-    }
-
-    /**
-     * Get supported currencies list (for reference)
-     */
-    public function supportedCurrencies(Request $request, $accountId)
-    {
-        $supportedCurrencies = [
-            ['code' => 'IDR', 'name' => 'Indonesian Rupiah', 'symbol' => 'Rp'],
-            ['code' => 'USD', 'name' => 'US Dollar', 'symbol' => '$'],
-            ['code' => 'EUR', 'name' => 'Euro', 'symbol' => '€'],
-            ['code' => 'GBP', 'name' => 'British Pound', 'symbol' => '£'],
-            ['code' => 'JPY', 'name' => 'Japanese Yen', 'symbol' => '¥'],
-            ['code' => 'SGD', 'name' => 'Singapore Dollar', 'symbol' => 'S$'],
-            ['code' => 'AUD', 'name' => 'Australian Dollar', 'symbol' => 'A$'],
-            ['code' => 'CAD', 'name' => 'Canadian Dollar', 'symbol' => 'C$'],
-            ['code' => 'CHF', 'name' => 'Swiss Franc', 'symbol' => 'CHF'],
-            ['code' => 'CNY', 'name' => 'Chinese Yuan', 'symbol' => '¥'],
-        ];
-
-        return response()->json($supportedCurrencies);
-    }
-
-    /**
-     * Ensure user has default IDR currency
-     */
-    public function ensureDefaultCurrency(Request $request, $accountId)
-    {
-        $existingIdr = Currency::where('user_id', Auth::id())
-            ->where('name', 'IDR')
-            ->first();
-
-        if (!$existingIdr) {
-            Currency::create([
-                'user_id' => Auth::id(),
-                'account_id' => $accountId,
-                'name' => 'IDR',
-                'symbol' => 'Rp',
-                'exchange_rate' => 1.0,
-            ]);
-        }
-
-        return response()->json(['message' => 'Default currency ensured']);
     }
 }

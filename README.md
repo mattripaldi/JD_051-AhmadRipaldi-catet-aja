@@ -46,10 +46,6 @@ Copy the environment file and configure your settings:
 cp .env.example .env
 ```
 
-# AI Service (if using AI categorization)
-# Configure your AI service API keys in config/services.php
-```
-
 ### 5. Generate Application Key
 
 ```bash

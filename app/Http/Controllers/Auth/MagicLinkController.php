@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\CurrencyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -42,6 +43,10 @@ class MagicLinkController extends Controller
                 'password' => Hash::make(Str::random(32)), // Random password since they won't use it
                 'email_verified_at' => now(),
             ]);
+
+            // Ensure new user has default IDR currency
+            $currencyService = app(CurrencyService::class);
+            $currencyService->ensureDefaultIdrCurrency($user);
         }
 
         // Send magic link using custom notification

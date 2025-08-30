@@ -42,13 +42,7 @@ export default function AccountIndex({ accounts }) {
                         <p className="text-gray-600 mt-1">Kelola akun keuangan Anda</p>
                     </div>
 
-                    <div>
-                        <ModalLink href="/account/create">
-                            <Button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
-                                Tambah Akun
-                            </Button>
-                        </ModalLink>
-                    </div>
+
 
 
                 </div>
@@ -77,12 +71,7 @@ export default function AccountIndex({ accounts }) {
                         </div>
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada akun</h3>
                         <p className="text-gray-500 mb-4">Buat akun pertama Anda untuk memulai</p>
-                        <ModalLink href="/account/create">
-                            <Button className="bg-green-600 hover:bg-green-700">
-                                <Plus className="w-4 h-4 mr-2" />
-                                Tambah Akun
-                            </Button>
-                        </ModalLink>
+
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-6">
@@ -131,6 +120,19 @@ export default function AccountIndex({ accounts }) {
                         ))}
                     </div>
                 )}
+            </div>
+            
+            {/* Fixed Floating Action Button */}
+            <div className="fixed bottom-36 right-1/2 transform translate-x-1/2 max-w-[480px] w-full">
+                <div className="absolute right-4">
+                    <ModalLink href="/account/create">
+                        <button className="flex h-14 w-14 items-center justify-center rounded-full bg-green-600 text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl active:scale-95">
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                        </button>
+                    </ModalLink>
+                </div>
             </div>
         </AccountLayout>
     );

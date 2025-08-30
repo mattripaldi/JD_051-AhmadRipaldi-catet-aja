@@ -1,32 +1,43 @@
-export const formatCurrency = (amount, currency = 'Rp', rate) => {
+// Currency symbol mapping
+const CURRENCY_SYMBOLS = {
+    'IDR': 'Rp',
+    'Rp': 'Rp',
+    'SGD': 'S$',
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'AUD': 'A$',
+    'CAD': 'C$',
+    'CHF': 'CHF',
+    'CNY': '¥',
+    'HKD': 'HK$',
+    'KRW': '₩',
+    'THB': '฿',
+    'MYR': 'RM',
+    'PHP': '₱',
+    'VND': '₫'
+};
+
+const getCurrencySymbol = (currency) => {
+    return CURRENCY_SYMBOLS[currency?.toUpperCase()] || currency || 'Rp';
+};
+
+export const formatCurrency = (amount, currency = 'IDR', rate = null, showConversion = true) => {
     const absAmount = Math.abs(amount);
     const isNegative = amount < 0;
+    const symbol = getCurrencySymbol(currency);
     
-    // If currency is SGD and we have a rate, show the IDR equivalent
-    if (currency === 'SGD' && rate) {
+    // If currency is not IDR/Rp and we have a rate, show the IDR equivalent
+    if (currency !== 'IDR' && currency !== 'Rp' && rate && showConversion) {
         const idrValue = absAmount * rate;
-        
-        if (absAmount >= 1000000000) {
-            return `${isNegative ? '-' : ''}S$${(absAmount / 1000000000).toFixed(1)}M (≈ ${isNegative ? '-' : ''}Rp ${(idrValue / 1000000000).toFixed(1)}M)`;
-        } else if (absAmount >= 1000000) {
-            return `${isNegative ? '-' : ''}S$${(absAmount / 1000000).toFixed(1)}Jt (≈ ${isNegative ? '-' : ''}Rp ${(idrValue / 1000000).toFixed(1)}Jt)`;
-        } else if (absAmount >= 1000) {
-            return `${isNegative ? '-' : ''}S$${(absAmount / 1000).toFixed(0)}Rb (≈ ${isNegative ? '-' : ''}Rp ${(idrValue / 1000).toFixed(0)}Rb)`;
-        }
-        return `${isNegative ? '-' : ''}S$${absAmount.toFixed(0)} (≈ ${isNegative ? '-' : ''}Rp ${idrValue.toFixed(0)})`;
+        const originalFormatted = formatCompactNumber(absAmount, symbol);
+        const idrFormatted = formatCompactNumber(idrValue, 'Rp');
+        return `${isNegative ? '-' : ''}${originalFormatted} (≈ ${isNegative ? '-' : ''}${idrFormatted})`;
     }
     
-    // Enhanced formatting for IDR with Indonesian abbreviations
-    if (absAmount >= 1000000000000) {
-        return `${isNegative ? '-' : ''}Rp ${(absAmount / 1000000000000).toFixed(1)}T`;
-    } else if (absAmount >= 1000000000) {
-        return `${isNegative ? '-' : ''}Rp ${(absAmount / 1000000000).toFixed(1)}M`;
-    } else if (absAmount >= 1000000) {
-        return `${isNegative ? '-' : ''}Rp ${(absAmount / 1000000).toFixed(1)}Jt`;
-    } else if (absAmount >= 1000) {
-        return `${isNegative ? '-' : ''}Rp ${(absAmount / 1000).toFixed(0)}Rb`;
-    }
-    return `${isNegative ? '-' : ''}Rp ${absAmount.toFixed(0)}`;
+    // Standard formatting using the compact formatter
+    return formatCompactNumber(amount, symbol);
 };
 
 export const formatNumber = (value) => {
@@ -136,10 +147,14 @@ export const formatRelativeTime = (date) => {
 };
 
 // Simple currency formatting for basic use cases
-export const formatSimpleCurrency = (amount, currency = 'Rp') => {
+export const formatSimpleCurrency = (amount, currency = 'IDR') => {
     const value = Math.abs(amount);
+    const isNegative = amount < 0;
+    const symbol = getCurrencySymbol(currency);
     const formattedValue = value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    return `${currency} ${formattedValue}`;
+    const needsSpace = ['Rp', 'CHF', 'RM'].includes(symbol);
+    const space = needsSpace ? ' ' : '';
+    return `${isNegative ? '-' : ''}${symbol}${space}${formattedValue}`;
 };
 
 // Format amount as currency for input fields
@@ -166,48 +181,43 @@ export const formatCurrencyInput = (value) => {
     return limitedValue;
 };
 
-// New compact number formatter for Indonesian abbreviations
-export const formatCompactNumber = (amount, currency = 'Rp') => {
+// Dynamic compact number formatter for any currency
+export const formatCompactNumber = (amount, currencySymbol = 'Rp') => {
     const absAmount = Math.abs(amount);
     const isNegative = amount < 0;
     const prefix = isNegative ? '-' : '';
     
-    if (currency === 'SGD') {
-        if (absAmount >= 1000000000000) {
-            return `${prefix}S$${(absAmount / 1000000000000).toFixed(1)}T`;
-        } else if (absAmount >= 1000000000) {
-            return `${prefix}S$${(absAmount / 1000000000).toFixed(1)}M`;
-        } else if (absAmount >= 1000000) {
-            return `${prefix}S$${(absAmount / 1000000).toFixed(1)}Jt`;
-        } else if (absAmount >= 100000) {
-            // For 100k-999k, show with 1 decimal place to avoid rounding
-            return `${prefix}S$${(absAmount / 1000).toFixed(1)}Rb`;
-        } else if (absAmount >= 10000) {
-            // For 10k-99k, show with 1 decimal place to be more precise
-            return `${prefix}S$${(absAmount / 1000).toFixed(1)}Rb`;
-        } else if (absAmount >= 1000) {
-            // For 1k-9.9k, show with 1 decimal place
-            return `${prefix}S$${(absAmount / 1000).toFixed(1)}Rb`;
-        }
-        return `${prefix}S$${absAmount.toFixed(0)}`;
-    }
+    // Determine if we should use space after symbol (for Rp and some others)
+    const needsSpace = ['Rp', 'CHF', 'RM'].includes(currencySymbol);
+    const space = needsSpace ? ' ' : '';
     
-    // IDR formatting
+    // Format based on amount size with Indonesian abbreviations
     if (absAmount >= 1000000000000) {
-        return `${prefix}Rp ${(absAmount / 1000000000000).toFixed(1)}T`;
+        return `${prefix}${currencySymbol}${space}${(absAmount / 1000000000000).toFixed(1)}T`;
     } else if (absAmount >= 1000000000) {
-        return `${prefix}Rp ${(absAmount / 1000000000).toFixed(1)}M`;
+        return `${prefix}${currencySymbol}${space}${(absAmount / 1000000000).toFixed(1)}M`;
     } else if (absAmount >= 1000000) {
-        return `${prefix}Rp ${(absAmount / 1000000).toFixed(1)}Jt`;
+        return `${prefix}${currencySymbol}${space}${(absAmount / 1000000).toFixed(1)}Jt`;
     } else if (absAmount >= 100000) {
         // For 100k-999k, show with 1 decimal place to avoid rounding
-        return `${prefix}Rp ${(absAmount / 1000).toFixed(1)}Rb`;
+        return `${prefix}${currencySymbol}${space}${(absAmount / 1000).toFixed(1)}Rb`;
     } else if (absAmount >= 10000) {
         // For 10k-99k, show with 1 decimal place to be more precise
-        return `${prefix}Rp ${(absAmount / 1000).toFixed(1)}Rb`;
+        return `${prefix}${currencySymbol}${space}${(absAmount / 1000).toFixed(1)}Rb`;
     } else if (absAmount >= 1000) {
         // For 1k-9.9k, show with 1 decimal place (e.g., 1750 = 1.8Rb)
-        return `${prefix}Rp ${(absAmount / 1000).toFixed(1)}Rb`;
+        return `${prefix}${currencySymbol}${space}${(absAmount / 1000).toFixed(1)}Rb`;
     }
-    return `${prefix}Rp ${absAmount.toFixed(0)}`;
+    return `${prefix}${currencySymbol}${space}${absAmount.toFixed(0)}`;
+};
+
+// Helper function to format currency with optional conversion to IDR
+export const formatCurrencyWithConversion = (amount, currency, exchangeRates = {}) => {
+    const rate = exchangeRates[currency];
+    return formatCurrency(amount, currency, rate, true);
+};
+
+// Helper function to get all supported currencies
+export const getSupportedCurrencies = () => {
+    return Object.keys(CURRENCY_SYMBOLS);
 };

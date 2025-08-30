@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Income;
 use App\Models\Outcome;
 use App\Models\Currency;
+use App\Models\User;
 use Carbon\Carbon;
 
 class CurrencyService
@@ -51,19 +52,6 @@ class CurrencyService
     {
         return $this->convertCurrency($amount, $fromCurrency, 'IDR', $userId, $accountId);
     }
-
-    /**
-     * Convert SGD amount to IDR using the latest rate (legacy method for backward compatibility)
-     *
-     * @param float $amount
-     * @param int $userId
-     * @param int|null $accountId
-     * @return float
-     */
-    public function convertSgdToIdr(float $amount, int $userId, ?int $accountId = null): float
-    {
-        return $this->convertToIdr($amount, 'SGD', $userId, $accountId);
-    }
     
     /**
      * Convert amount from one currency to another for a specific date
@@ -97,21 +85,6 @@ class CurrencyService
     public function convertToIdrForDate(float $amount, string $fromCurrency, $date, int $userId, ?int $accountId = null): float
     {
         return $this->convertCurrencyForDate($amount, $fromCurrency, 'IDR', $date, $userId, $accountId);
-    }
-
-    /**
-     * Convert SGD amount to IDR for a specific date (legacy method for backward compatibility)
-     * Uses the rate for the month of the given date
-     *
-     * @param float $amount
-     * @param string|Carbon $date
-     * @param int $userId
-     * @param int|null $accountId
-     * @return float
-     */
-    public function convertSgdToIdrForDate(float $amount, $date, int $userId, ?int $accountId = null): float
-    {
-        return $this->convertToIdrForDate($amount, 'SGD', $date, $userId, $accountId);
     }
     
     /**
@@ -155,20 +128,6 @@ class CurrencyService
     {
         return $this->getExchangeRateForDate($fromCurrency, 'IDR', $date, $userId, $accountId);
     }
-
-    /**
-     * Get the SGD to IDR exchange rate for a specific date (legacy method for backward compatibility)
-     * Uses the rate for the month of the given date
-     *
-     * @param string|Carbon $date
-     * @param int $userId
-     * @param int|null $accountId
-     * @return float
-     */
-    public function getSgdToIdrRateForDate($date, int $userId, ?int $accountId = null): float
-    {
-        return $this->getToIdrRateForDate('SGD', $date, $userId, $accountId);
-    }
     
     /**
      * Get the exchange rate between two currencies for a specific year and month
@@ -210,20 +169,6 @@ class CurrencyService
     {
         return $this->getExchangeRateForMonth($fromCurrency, 'IDR', $userId, $accountId, $year, $month);
     }
-
-    /**
-     * Get the SGD to IDR exchange rate for a specific year and month (legacy method for backward compatibility)
-     *
-     * @param int $userId
-     * @param int|null $accountId
-     * @param int|null $year
-     * @param int|null $month
-     * @return float
-     */
-    public function getSgdToIdrRateForMonth(int $userId, ?int $accountId = null, ?int $year = null, ?int $month = null): float
-    {
-        return $this->getToIdrRateForMonth('SGD', $userId, $accountId, $year, $month);
-    }
     
     /**
      * Get the latest exchange rate between two currencies
@@ -249,12 +194,7 @@ class CurrencyService
                 }
                 
                 // If not found in database, try to fetch from external APIs
-                // For now, we'll support SGD to IDR specifically, but this can be expanded
-                if ($fromCurrency === 'SGD' && $toCurrency === 'IDR') {
-                    return $this->fetchSgdToIdrFromApi($userId, $accountId);
-                }
-                
-                // For other currency pairs, try open.er-api.com
+                // Try open.er-api.com for all currency pairs
                 $response = Http::get("https://open.er-api.com/v6/latest/{$fromCurrency}");
                 
                 if ($response->successful()) {
@@ -271,14 +211,21 @@ class CurrencyService
                     }
                 }
                 
-                // Fallback to a reasonable default based on currency pair
-                $fallbackRate = $this->getFallbackRate($fromCurrency, $toCurrency);
-                Log::warning("All currency API calls failed for {$fromCurrency} to {$toCurrency}, using fallback rate: {$fallbackRate}");
+                // If the primary API doesn't have the rate, try alternative APIs for popular currency pairs
+                if ($fromCurrency === 'SGD' && $toCurrency === 'IDR') {
+                    $alternativeRate = $this->fetchFromAlternativeApis($fromCurrency, $toCurrency, $userId, $accountId);
+                    if ($alternativeRate > 0) {
+                        return $alternativeRate;
+                    }
+                }
                 
-                return $fallbackRate;
+                // Log error and return 1.0 as default (no conversion)
+                Log::error("All currency API calls failed for {$fromCurrency} to {$toCurrency}, returning 1.0 (no conversion)");
+                
+                return 1.0;
             } catch (\Exception $e) {
                 Log::error('Error fetching currency rates: ' . $e->getMessage());
-                return $this->getFallbackRate($fromCurrency, $toCurrency);
+                return 1.0;
             }
         });
     }
@@ -298,38 +245,30 @@ class CurrencyService
     }
 
     /**
-     * Get the latest SGD to IDR exchange rate (legacy method for backward compatibility)
-     * Cached for 1 day
+     * Fetch rates from alternative APIs for popular currency pairs
      *
+     * @param string $fromCurrency
+     * @param string $toCurrency
      * @param int $userId
      * @param int|null $accountId
      * @return float
      */
-    public function getSgdToIdrRate(int $userId, ?int $accountId = null): float
+    private function fetchFromAlternativeApis(string $fromCurrency, string $toCurrency, int $userId, ?int $accountId): float
     {
-        return $this->getToIdrRate('SGD', $userId, $accountId);
-    }
-
-    /**
-     * Fetch SGD to IDR rate from external APIs with multiple fallbacks
-     *
-     * @param int $userId
-     * @param int|null $accountId
-     * @return float
-     */
-    private function fetchSgdToIdrFromApi(int $userId, ?int $accountId): float
-    {
+        $lowerFromCurrency = strtolower($fromCurrency);
+        $lowerToCurrency = strtolower($toCurrency);
+        
         // First try the JSDelivr CDN
-        $response = Http::get("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/sgd.json");
+        $response = Http::get("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{$lowerFromCurrency}.json");
         
         if ($response->successful()) {
             $data = $response->json();
-            if (isset($data['sgd']['idr'])) {
-                $apiRate = $data['sgd']['idr'];
+            if (isset($data[$lowerFromCurrency][$lowerToCurrency])) {
+                $apiRate = $data[$lowerFromCurrency][$lowerToCurrency];
                 
                 // Store the rate in the database for future use (if accountId is provided)
                 if ($accountId) {
-                    Currency::updateOrCreateRate('SGD', 'IDR', $userId, $accountId, $apiRate, 'SGD');
+                    Currency::updateOrCreateRate($fromCurrency, $toCurrency, $userId, $accountId, $apiRate, $fromCurrency);
                 }
                 
                 return $apiRate;
@@ -337,63 +276,23 @@ class CurrencyService
         }
         
         // If JSDelivr fails, try the Cloudflare fallback
-        $response = Http::get("https://latest.currency-api.pages.dev/v1/currencies/sgd.json");
+        $response = Http::get("https://latest.currency-api.pages.dev/v1/currencies/{$lowerFromCurrency}.json");
         
         if ($response->successful()) {
             $data = $response->json();
-            if (isset($data['sgd']['idr'])) {
-                $apiRate = $data['sgd']['idr'];
+            if (isset($data[$lowerFromCurrency][$lowerToCurrency])) {
+                $apiRate = $data[$lowerFromCurrency][$lowerToCurrency];
                 
                 // Store the rate in the database for future use (if accountId is provided)
                 if ($accountId) {
-                    Currency::updateOrCreateRate('SGD', 'IDR', $userId, $accountId, $apiRate, 'SGD');
+                    Currency::updateOrCreateRate($fromCurrency, $toCurrency, $userId, $accountId, $apiRate, $fromCurrency);
                 }
                 
                 return $apiRate;
             }
         }
         
-        // If both APIs fail, try the open.er-api.com as a fallback
-        $response = Http::get('https://open.er-api.com/v6/latest/SGD');
-        
-        if ($response->successful()) {
-            $data = $response->json();
-            $apiRate = $data['rates']['IDR'] ?? 11600; // Default fallback rate if API doesn't return IDR
-            
-            // Store the rate in the database for future use (if accountId is provided)
-            if ($accountId) {
-                Currency::updateOrCreateRate('SGD', 'IDR', $userId, $accountId, $apiRate, 'SGD');
-            }
-            
-            return $apiRate;
-        }
-        
-        return 11600; // Fallback rate
-    }
-
-    /**
-     * Get fallback exchange rate for currency pairs
-     *
-     * @param string $fromCurrency
-     * @param string $toCurrency
-     * @return float
-     */
-    private function getFallbackRate(string $fromCurrency, string $toCurrency): float
-    {
-        // Define some common fallback rates
-        $fallbackRates = [
-            'SGD_IDR' => 11600,
-            'USD_IDR' => 15000,
-            'EUR_IDR' => 16000,
-            'GBP_IDR' => 19000,
-            'JPY_IDR' => 100,
-            'USD_SGD' => 1.35,
-            'EUR_SGD' => 1.45,
-            'GBP_SGD' => 1.70,
-        ];
-        
-        $key = "{$fromCurrency}_{$toCurrency}";
-        return $fallbackRates[$key] ?? 1.0; // Default to 1:1 if no specific fallback
+        return 0; // Return 0 if no alternative API worked
     }
     
     /**
@@ -443,6 +342,33 @@ class CurrencyService
     }
     
     /**
+     * Get exchange rates for all user currencies to IDR for a specific month
+     * Returns an array with currency codes as keys and exchange rates as values
+     *
+     * @param array $currencies
+     * @param int $userId
+     * @param int|null $accountId
+     * @param int|null $year
+     * @param int|null $month
+     * @return array
+     */
+    public function getExchangeRatesForUserCurrencies(array $currencies, int $userId, ?int $accountId = null, ?int $year = null, ?int $month = null): array
+    {
+        $rates = [];
+        
+        foreach ($currencies as $currency) {
+            if ($currency === 'IDR' || $currency === 'Rp') {
+                // IDR to IDR is always 1.0
+                $rates[$currency] = 1.0;
+            } else {
+                $rates[$currency] = $this->getToIdrRateForMonth($currency, $userId, $accountId, $year, $month);
+            }
+        }
+        
+        return $rates;
+    }
+
+    /**
      * Update the currency rate for a specific user and account
      *
      * @param int $userId
@@ -462,5 +388,45 @@ class CurrencyService
         string $symbol = ''
     ): Currency {
         return Currency::updateOrCreateRate($fromCurrency, $toCurrency, $userId, $accountId, $rate, $symbol);
+    }
+
+    /**
+     * Ensure user has default IDR currency set up
+     * Creates default account if needed and adds IDR currency
+     *
+     * @param User $user
+     * @return void
+     */
+    public function ensureDefaultIdrCurrency(User $user): void
+    {
+        // Check if user has any accounts
+        $accounts = $user->accounts;
+
+        if ($accounts->isEmpty()) {
+            // Create default account
+            $account = $user->accounts()->create([
+                'name' => 'Default Account',
+                'description' => 'Default account created automatically',
+            ]);
+            $accounts = collect([$account]);
+        }
+
+        // Ensure each account has IDR currency
+        foreach ($accounts as $account) {
+            $existingIdr = Currency::where('user_id', $user->id)
+                ->where('account_id', $account->id)
+                ->where('name', 'IDR')
+                ->first();
+
+            if (!$existingIdr) {
+                Currency::create([
+                    'user_id' => $user->id,
+                    'account_id' => $account->id,
+                    'name' => 'IDR',
+                    'symbol' => 'Rp',
+                    'exchange_rate' => 1.0,
+                ]);
+            }
+        }
     }
 } 

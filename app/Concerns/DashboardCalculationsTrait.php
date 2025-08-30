@@ -40,7 +40,6 @@ trait DashboardCalculationsTrait
             $query->where('currency', $currency);
         } else {
             // For 'IDR', include both null and 'Rp' currency transactions (legacy support)
-            // Do NOT include SGD transactions for IDR view to match income/outcome pages
             $query->where(function($q) {
                 $q->where('currency', 'Rp')
                   ->orWhere('currency', 'IDR')
@@ -422,7 +421,7 @@ trait DashboardCalculationsTrait
     }
 
     /**
-     * Calculate currency breakdown data for IDR and SGD with optimized queries
+     * Calculate currency breakdown data based on user's actual currencies with optimized queries
      * 
      * @param int $year
      * @param int $month
@@ -431,21 +430,79 @@ trait DashboardCalculationsTrait
      */
     protected function getCurrencyBreakdown($year, $month, $mode)
     {
-        $idrData = $this->getOptimizedPeriodStats($year, $month, 'IDR', $mode);
-        $sgdData = $this->getOptimizedPeriodStats($year, $month, 'SGD', $mode);
+        $userCurrencies = $this->getUserCurrencies();
+        $breakdown = [];
         
-        return [
-            'IDR' => [
+        foreach ($userCurrencies as $currency) {
+            $currencyData = $this->getOptimizedPeriodStats($year, $month, $currency, $mode);
+            $breakdown[$currency] = [
+                'income' => $currencyData['income'],
+                'outcome' => abs($currencyData['outcome']),
+                'balance' => $currencyData['income'] - abs($currencyData['outcome']),
+            ];
+        }
+        
+        // Fallback to IDR if no currencies found
+        if (empty($breakdown)) {
+            $idrData = $this->getOptimizedPeriodStats($year, $month, 'IDR', $mode);
+            $breakdown['IDR'] = [
                 'income' => $idrData['income'],
                 'outcome' => abs($idrData['outcome']),
                 'balance' => $idrData['income'] - abs($idrData['outcome']),
-            ],
-            'SGD' => [
-                'income' => $sgdData['income'],
-                'outcome' => abs($sgdData['outcome']),
-                'balance' => $sgdData['income'] - abs($sgdData['outcome']),
-            ],
-        ];
+            ];
+        }
+        
+        return $breakdown;
+    }
+
+    /**
+     * Get distinct currencies used by the user in their transactions
+     * 
+     * @return array
+     */
+    protected function getUserCurrencies()
+    {
+        $incomeCurrencies = Income::query()
+            ->select('currency')
+            ->where('user_id', Auth::id())
+            ->whereNotNull('currency')
+            ->distinct()
+            ->pluck('currency')
+            ->filter()
+            ->toArray();
+
+        $outcomeCurrencies = Outcome::query()
+            ->select('currency')
+            ->where('user_id', Auth::id())
+            ->whereNotNull('currency')
+            ->distinct()
+            ->pluck('currency')
+            ->filter()
+            ->toArray();
+
+        // Merge and get unique currencies
+        $allCurrencies = array_unique(array_merge($incomeCurrencies, $outcomeCurrencies));
+        
+        // Normalize legacy currency values and remove duplicates
+        $normalizedCurrencies = [];
+        foreach ($allCurrencies as $currency) {
+            // Convert legacy 'Rp' to 'IDR'
+            $normalized = ($currency === 'Rp') ? 'IDR' : $currency;
+            if (!in_array($normalized, $normalizedCurrencies)) {
+                $normalizedCurrencies[] = $normalized;
+            }
+        }
+        
+        // Sort currencies, with IDR first if it exists
+        sort($normalizedCurrencies);
+        if (in_array('IDR', $normalizedCurrencies)) {
+            $normalizedCurrencies = array_merge(
+                ['IDR'], 
+                array_filter($normalizedCurrencies, fn($c) => $c !== 'IDR')
+            );
+        }
+        
+        return $normalizedCurrencies;
     }
 
     /**

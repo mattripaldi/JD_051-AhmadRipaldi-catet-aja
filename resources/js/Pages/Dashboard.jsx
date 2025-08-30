@@ -50,13 +50,6 @@ export default function Dashboard({ account }) {
                         </p>
                     </div>
 
-                    <div className="space-y-4">
-                        <ModalLink href={route('modal.sample', { account: account?.id })}>
-                            <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
-                                Buka Modal Contoh
-                            </Button>
-                        </ModalLink>
-                    </div>
                 </div>
             </div>
         </MobileLayout>

@@ -1,24 +1,37 @@
-import { useForm } from '@inertiajs/react';
+import { usePage, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import DrawerModal from '@/components/common/drawer-modal';
 import { useToastContext } from '@/components/ui/toast-provider';
+import { formatDateToInput } from '@/utils/formatters';
 
-export default function AccountCreate() {
-    const { data, setData, post, processing, errors } = useForm({
-        name: '',
-        description: '',
+export default function EditOutcome({ transaction, filters }) {
+    const { auth } = usePage().props;
+
+    const { data, setData, put, processing, errors } = useForm({
+        description: transaction.description,
+        amount: transaction.amount.toString(),
+        date: formatDateToInput(transaction.transaction_date || transaction.date),
     });
 
     const { success } = useToastContext();
 
     const handleSubmit = (e, close) => {
         e.preventDefault();
-        post(route('account.store'), {
+
+        const submitData = {
+            ...data,
+            year: filters?.year,
+            month: filters?.month,
+            currency: filters?.currency || 'IDR',
+        };
+
+        put(`/account/${auth.account.id}/outcome/${transaction.id}`, {
+            data: submitData,
             onSuccess: () => {
-                success('Akun berhasil dibuat!');
+                success('Pengeluaran berhasil diperbarui!');
                 close();
             },
             onError: () => {
@@ -51,36 +64,53 @@ export default function AccountCreate() {
         <form onSubmit={(e) => handleSubmit(e, close)} onKeyDown={handleKeyDown} className="h-full flex flex-col">
             <div className="flex-1 space-y-6">
                 <div className="space-y-2">
-                    <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                        Nama Akun
-                    </Label>
-                    <Input
-                        id="name"
-                        type="text"
-                        value={data.name}
-                        onChange={(e) => setData('name', e.target.value)}
-                        placeholder="contoh: Tabungan Utama"
-                        className="border-gray-200 focus:border-gray-400 focus:ring-gray-400"
-                        autoFocus
-                        required
-                    />
-                    {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name}</p>}
-                </div>
-
-                <div className="space-y-2">
                     <Label htmlFor="description" className="text-sm font-medium text-gray-700">
-                        Deskripsi (Opsional)
+                        Deskripsi *
                     </Label>
                     <Textarea
                         id="description"
                         value={data.description}
                         onChange={(e) => setData('description', e.target.value)}
                         onKeyDown={handleTextareaKeyDown}
-                        placeholder="Deskripsi akun..."
+                        placeholder="Masukkan deskripsi pengeluaran..."
                         rows={3}
                         className="border-gray-200 focus:border-gray-400 focus:ring-gray-400 resize-none"
+                        autoFocus
+                        required
                     />
                     {errors.description && <p className="text-sm text-red-600 mt-1">{errors.description}</p>}
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="amount" className="text-sm font-medium text-gray-700">
+                        Jumlah *
+                    </Label>
+                    <Input
+                        id="amount"
+                        type="number"
+                        step="0.01"
+                        value={data.amount}
+                        onChange={(e) => setData('amount', e.target.value)}
+                        placeholder="0.00"
+                        className="border-gray-200 focus:border-gray-400 focus:ring-gray-400"
+                        required
+                    />
+                    {errors.amount && <p className="text-sm text-red-600 mt-1">{errors.amount}</p>}
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="date" className="text-sm font-medium text-gray-700">
+                        Tanggal *
+                    </Label>
+                    <Input
+                        id="date"
+                        type="date"
+                        value={data.date}
+                        onChange={(e) => setData('date', e.target.value)}
+                        className="border-gray-200 focus:border-gray-400 focus:ring-gray-400"
+                        required
+                    />
+                    {errors.date && <p className="text-sm text-red-600 mt-1">{errors.date}</p>}
                 </div>
             </div>
 
@@ -88,9 +118,9 @@ export default function AccountCreate() {
                 <Button
                     type="submit"
                     disabled={processing}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="bg-red-600 hover:bg-red-700 text-white"
                 >
-                    {processing ? 'Mengirim...' : 'Kirim'}
+                    {processing ? 'Memperbarui...' : 'Perbarui'}
                 </Button>
                 <Button
                     type="button"
@@ -106,8 +136,8 @@ export default function AccountCreate() {
 
     return (
         <DrawerModal
-            title="Buat Akun Baru"
-            description="Tambahkan akun keuangan baru untuk melacak uang Anda"
+            title="Edit Pengeluaran"
+            description="Ubah detail pengeluaran"
         >
             {renderContent}
         </DrawerModal>

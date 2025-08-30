@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use Inertia\Inertia;
 use App\Models\Income;
-use App\Models\Outcome;
 use Illuminate\Http\Request;
 use App\Services\CurrencyService;
 use App\Jobs\CategorizeTransactionJob;
@@ -26,6 +25,54 @@ class IncomeController extends Controller
         $this->currencyService = $currencyService;
     }
 
+    public function create(Request $request, $accountId)
+    {
+        return Inertia::modal('Incomes/Create', [
+            'filters' => [
+                'year' => (int) Carbon::now()->year,
+                'month' => (int) Carbon::now()->month,
+                'currency' => 'IDR',
+            ],
+        ])->baseRoute('income.index', ['account' => $accountId]);
+    }
+
+    public function edit(Request $request, $accountId, Income $income)
+    {
+        $year = $request->query('year', Carbon::now()->year);
+        $month = $request->query('month', Carbon::now()->month);
+        $currency = $request->query('currency', 'IDR');
+
+        return Inertia::modal('Incomes/Edit', [
+            'transaction' => [
+                'id' => $income->id,
+                'description' => $income->description,
+                'amount' => (float) $income->amount,
+                'date' => $income->transaction_date,
+                'transaction_date' => $income->transaction_date,
+                'currency' => $income->currency ?? 'IDR',
+            ],
+            'filters' => [
+                'year' => (int) $year,
+                'month' => (int) $month,
+                'currency' => $currency,
+            ],
+        ])->baseRoute('income.index', ['account' => $accountId]);
+    }
+
+    public function confirmDelete($accountId, Income $income)
+    {
+        return Inertia::modal('Incomes/Delete', [
+            'transaction' => [
+                'id' => $income->id,
+                'account_id' => $income->account_id,
+                'description' => $income->description,
+                'amount' => (float) $income->amount,
+                'date' => $income->transaction_date,
+                'currency' => $income->currency ?? 'IDR',
+            ],
+        ])->baseRoute('income.index', ['account' => $accountId]);
+    }
+
     public function index(Request $request)
     {
         $year = $request->query('year', Carbon::now()->year);
@@ -36,7 +83,7 @@ class IncomeController extends Controller
         $category = $request->query('category', null);
         
         $query = $this->buildTransactionQuery('income', $year, $month, $mode, $currency, $search, $category)
-            ->select(['id', 'user_id', 'description', 'type', 'amount', 'transaction_date', 'currency', 'category_id', 'categorization_status']);
+            ->select(['id', 'user_id', 'description', 'amount', 'transaction_date', 'currency', 'category_id', 'categorization_status']);
         $perPage = 10;
         $data = $query->paginate($perPage)->withQueryString();
         
@@ -80,11 +127,22 @@ class IncomeController extends Controller
             ],
         ];
 
-        // Calculate currency breakdown using the same method as dashboard
-        $currencyBreakdown = [
-            'IDR' => ['balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'income', 'IDR', $mode)],
-            'SGD' => ['balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'income', 'SGD', $mode)]
-        ];
+        // Calculate currency breakdown based on user's actual currencies
+        $userCurrencies = $this->getUserCurrencies();
+        $currencyBreakdown = [];
+        
+        foreach ($userCurrencies as $userCurrency) {
+            $currencyBreakdown[$userCurrency] = [
+                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'income', $userCurrency, $mode)
+            ];
+        }
+        
+        // Fallback to IDR if no currencies found
+        if (empty($currencyBreakdown)) {
+            $currencyBreakdown['IDR'] = [
+                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'income', 'IDR', $mode)
+            ];
+        }
 
         // Determine period names for display
         if ($mode === 'month') {
@@ -97,10 +155,16 @@ class IncomeController extends Controller
             $previousPeriodName = (string) ($year - 1);
         }
 
-        // Get the SGD to IDR currency rate for the current month
-        $sgdToIdrRate = $this->currencyService->getSgdToIdrRateForMonth($year, $month);
+        // Get exchange rates for all user currencies to IDR for the current month
+        $currencyRates = $this->currencyService->getExchangeRatesForUserCurrencies(
+            array_keys($currencyBreakdown), 
+            Auth::id(), 
+            null, 
+            $year, 
+            $month
+        );
 
-        return Inertia::render('incomes/index', [
+        return Inertia::render('Incomes/Index', [
             'transactions' => $transactions,
             'filters' => [
                 'year' => (int) $year,
@@ -117,24 +181,24 @@ class IncomeController extends Controller
                 'outcomeChange' => round($outcomeChange, 1),
                 'currentPeriod' => $currentPeriodName,
                 'previousPeriod' => $previousPeriodName,
-                'sgdToIdrRate' => $sgdToIdrRate,
+                'currencyRates' => $currencyRates,
                 'showCurrencyTabs' => ($year > 2024 || ($year == 2024 && $month >= 4)),
             ],
             'currencyBreakdown' => $currencyBreakdown,
         ]);
     }
 
-    public function store(Request $request) 
+    public function store(Request $request, $accountId)
     {
         $request->validate([
-            'description' => 'required|min:3',            
-            'amount' => 'required|min:3',            
-            'date' => 'required',
-            'currency' => 'required'
+            'description' => 'required|string',
+            'amount' => 'required|numeric|min:0',
+            'date' => 'required|date',
         ]);        
 
         $transaction = Income::create([
             'user_id' => Auth::id(),
+            'account_id' => $accountId,
             'amount' => $request->amount,
             'description' => $request->description,
             'transaction_date' => $request->date,
@@ -150,16 +214,15 @@ class IncomeController extends Controller
         if ($request->month) $redirectParams['month'] = $request->month;
         if ($request->currency && $request->currency !== 'IDR') $redirectParams['currency'] = $request->currency;
 
-        return redirect()->route('income.index', $redirectParams);
+        return redirect()->route('income.index', ['account' => $accountId] + $redirectParams);
     }
 
-    public function update(Request $request, Income $income)
+    public function update(Request $request, $accountId, Income $income)
     {
         $request->validate([
-            'description' => 'required|min:3',            
-            'amount' => 'required|min:3',            
-            'date' => 'required',
-            'currency' => 'required'
+            'description' => 'required|string',
+            'amount' => 'required|numeric|min:0',
+            'date' => 'required|date',
         ]);
         
         // Check if description has changed
@@ -183,10 +246,10 @@ class IncomeController extends Controller
         if ($request->month) $redirectParams['month'] = $request->month;
         if ($request->currency && $request->currency !== 'IDR') $redirectParams['currency'] = $request->currency;
         
-        return redirect()->route('income.index', $redirectParams);
+        return redirect()->route('income.index', ['account' => $accountId] + $redirectParams);
     }
 
-    public function destroy(Income $income, Request $request)
+    public function destroy(Request $request, $accountId, Income $income)
     {
         $income->delete();
         
@@ -196,6 +259,6 @@ class IncomeController extends Controller
         if ($request->month) $redirectParams['month'] = $request->month;
         if ($request->currency && $request->currency !== 'IDR') $redirectParams['currency'] = $request->currency;
         
-        return redirect()->route('income.index', $redirectParams);
+        return redirect()->route('income.index', ['account' => $accountId] + $redirectParams);
     }
 }

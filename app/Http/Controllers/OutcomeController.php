@@ -25,6 +25,54 @@ class OutcomeController extends Controller
         $this->currencyService = $currencyService;
     }
 
+    public function create(Request $request, $accountId)
+    {
+        return Inertia::modal('Outcomes/Create', [
+            'filters' => [
+                'year' => (int) Carbon::now()->year,
+                'month' => (int) Carbon::now()->month,
+                'currency' => 'IDR',
+            ],
+        ])->baseRoute('outcome.index', ['account' => $accountId]);
+    }
+
+    public function edit(Request $request, $accountId, Outcome $outcome)
+    {
+        $year = $request->query('year', Carbon::now()->year);
+        $month = $request->query('month', Carbon::now()->month);
+        $currency = $request->query('currency', 'IDR');
+
+        return Inertia::modal('Outcomes/Edit', [
+            'transaction' => [
+                'id' => $outcome->id,
+                'description' => $outcome->description,
+                'amount' => (float) $outcome->amount,
+                'date' => $outcome->transaction_date,
+                'transaction_date' => $outcome->transaction_date,
+                'currency' => $outcome->currency ?? 'IDR',
+            ],
+            'filters' => [
+                'year' => (int) $year,
+                'month' => (int) $month,
+                'currency' => $currency,
+            ],
+        ])->baseRoute('outcome.index', ['account' => $accountId]);
+    }
+
+    public function confirmDelete($accountId, Outcome $outcome)
+    {
+        return Inertia::modal('Outcomes/Delete', [
+            'transaction' => [
+                'id' => $outcome->id,
+                'account_id' => $outcome->account_id,
+                'description' => $outcome->description,
+                'amount' => (float) $outcome->amount,
+                'date' => $outcome->transaction_date,
+                'currency' => $outcome->currency ?? 'IDR',
+            ],
+        ])->baseRoute('outcome.index', ['account' => $accountId]);
+    }
+
     public function index(Request $request)
     {
         $year = $request->query('year', Carbon::now()->year);
@@ -80,11 +128,22 @@ class OutcomeController extends Controller
             ],
         ];
 
-        // Calculate currency breakdown using the same method as dashboard
-        $currencyBreakdown = [
-            'IDR' => ['balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'outcome', 'IDR', $mode)],
-            'SGD' => ['balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'outcome', 'SGD', $mode)]
-        ];
+        // Calculate currency breakdown based on user's actual currencies
+        $userCurrencies = $this->getUserCurrencies();
+        $currencyBreakdown = [];
+        
+        foreach ($userCurrencies as $userCurrency) {
+            $currencyBreakdown[$userCurrency] = [
+                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'outcome', $userCurrency, $mode)
+            ];
+        }
+        
+        // Fallback to IDR if no currencies found
+        if (empty($currencyBreakdown)) {
+            $currencyBreakdown['IDR'] = [
+                'balance' => $this->calculateTotalWithCurrencyConversion($year, $month, 'outcome', 'IDR', $mode)
+            ];
+        }
 
         // Determine period names for display
         if ($mode === 'month') {
@@ -97,10 +156,16 @@ class OutcomeController extends Controller
             $previousPeriodName = (string) ($year - 1);
         }
 
-        // Get the SGD to IDR currency rate for the current month
-        $sgdToIdrRate = $this->currencyService->getSgdToIdrRateForMonth($year, $month);
+        // Get exchange rates for all user currencies to IDR for the current month
+        $currencyRates = $this->currencyService->getExchangeRatesForUserCurrencies(
+            array_keys($currencyBreakdown), 
+            Auth::id(), 
+            null, 
+            $year, 
+            $month
+        );
 
-        return Inertia::render('outcomes/index', [
+        return Inertia::render('Outcomes/Index', [
             'transactions' => $transactions,
             'filters' => [
                 'year' => (int) $year,
@@ -117,24 +182,24 @@ class OutcomeController extends Controller
                 'outcomeChange' => round($outcomeChange, 1),
                 'currentPeriod' => $currentPeriodName,
                 'previousPeriod' => $previousPeriodName,
-                'sgdToIdrRate' => $sgdToIdrRate,
+                'currencyRates' => $currencyRates,
                 'showCurrencyTabs' => ($year > 2024 || ($year == 2024 && $month >= 4)),
             ],
             'currencyBreakdown' => $currencyBreakdown,
         ]);
     }
 
-    public function store(Request $request) 
+    public function store(Request $request, $accountId)
     {
         $request->validate([
-            'description' => 'required|min:3',            
-            'amount' => 'required|min:3',            
-            'date' => 'required',
-            'currency' => 'required'
-        ]);        
+            'description' => 'required|string',
+            'amount' => 'required|numeric|min:0',
+            'date' => 'required|date',
+        ]);
 
         $transaction = Outcome::create([
             'user_id' => Auth::id(),
+            'account_id' => $accountId,
             'amount' => $request->amount,
             'description' => $request->description,
             'transaction_date' => $request->date,
@@ -150,16 +215,15 @@ class OutcomeController extends Controller
         if ($request->month) $redirectParams['month'] = $request->month;
         if ($request->currency && $request->currency !== 'IDR') $redirectParams['currency'] = $request->currency;
 
-        return redirect()->route('outcome.index', $redirectParams);
+        return redirect()->route('outcome.index', ['account' => $accountId] + $redirectParams);
     }
 
-    public function update(Request $request, Outcome $outcome)
+    public function update(Request $request, $accountId, Outcome $outcome)
     {
         $request->validate([
-            'description' => 'required|min:3',            
-            'amount' => 'required|min:3',            
-            'date' => 'required',
-            'currency' => 'required'
+            'description' => 'required|string',
+            'amount' => 'required|numeric|min:0',
+            'date' => 'required|date',
         ]);
         
         // Check if description has changed
@@ -182,11 +246,11 @@ class OutcomeController extends Controller
         if ($request->year) $redirectParams['year'] = $request->year;
         if ($request->month) $redirectParams['month'] = $request->month;
         if ($request->currency && $request->currency !== 'IDR') $redirectParams['currency'] = $request->currency;
-        
-        return redirect()->route('outcome.index', $redirectParams);
+
+        return redirect()->route('outcome.index', ['account' => $accountId] + $redirectParams);
     }
 
-    public function destroy(Outcome $outcome, Request $request)
+    public function destroy(Request $request, $accountId, Outcome $outcome)
     {
         $outcome->delete();
         
@@ -195,7 +259,7 @@ class OutcomeController extends Controller
         if ($request->year) $redirectParams['year'] = $request->year;
         if ($request->month) $redirectParams['month'] = $request->month;
         if ($request->currency && $request->currency !== 'IDR') $redirectParams['currency'] = $request->currency;
-        
-        return redirect()->route('outcome.index', $redirectParams);
+
+        return redirect()->route('outcome.index', ['account' => $accountId] + $redirectParams);
     }
 }

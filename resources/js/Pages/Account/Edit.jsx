@@ -60,7 +60,7 @@ export default function AccountEdit({ account }) {
                         value={data.name}
                         onChange={(e) => setData('name', e.target.value)}
                         placeholder="contoh: Tabungan Utama"
-                        className="h-12 text-base border-gray-200 focus:border-gray-400 focus:ring-gray-400"
+                        className="border-gray-200 focus:border-gray-400 focus:ring-gray-400"
                         autoFocus
                         required
                     />
@@ -78,7 +78,7 @@ export default function AccountEdit({ account }) {
                         onKeyDown={handleTextareaKeyDown}
                         placeholder="Deskripsi akun..."
                         rows={3}
-                        className="text-base border-gray-200 focus:border-gray-400 focus:ring-gray-400 resize-none"
+                        className="border-gray-200 focus:border-gray-400 focus:ring-gray-400 resize-none"
                     />
                     {errors.description && <p className="text-sm text-red-600 mt-1">{errors.description}</p>}
                 </div>
@@ -88,14 +88,14 @@ export default function AccountEdit({ account }) {
                 <Button
                     type="submit"
                     disabled={processing}
-                    className="h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 text-white"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                     {processing ? 'Memperbarui...' : 'Perbarui'}
                 </Button>
                 <Button
                     type="button"
                     variant="outline"
-                    className="h-12 text-base font-medium border-gray-200 text-gray-700 hover:bg-gray-50"
+                    className="border-gray-200 text-gray-700 hover:bg-gray-50"
                     onClick={() => close()}
                 >
                     Batal

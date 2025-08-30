@@ -226,7 +226,8 @@ trait TransactionQueryTrait
     }
     
     /**
-     * Calculate totals from transactions collection
+     * Calculate totals from transactions collection with currency conversion
+     * Converts foreign currencies to IDR when viewing in IDR mode
      *
      * @param \Illuminate\Database\Eloquent\Collection $transactions
      * @param string $currency
@@ -241,9 +242,9 @@ trait TransactionQueryTrait
         foreach ($transactions as $transaction) {
             $amount = $transaction->amount;
 
-            // Only convert SGD to IDR if we're viewing IDR and transaction is SGD
-            if ($currency === 'IDR' && $transaction->currency === 'SGD') {
-                $amount = $this->currencyService->convertSgdToIdrForDate($amount, $transaction->transaction_date);
+            // Convert any foreign currency to IDR if we're viewing IDR and transaction is in foreign currency
+            if ($currency === 'IDR' && $transaction->currency && $transaction->currency !== 'IDR' && $transaction->currency !== 'Rp') {
+                $amount = $this->currencyService->convertToIdrForDate($amount, $transaction->currency, $transaction->transaction_date, Auth::id());
             }
 
             // Since this method is called with transactions of a specific type,

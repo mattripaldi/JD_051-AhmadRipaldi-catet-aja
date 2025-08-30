@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Notifications\MagicLinkNotification;
+use App\Services\CurrencyService;
 use Illuminate\Auth\Notifications\ResetPassword;
 
 trait Oauth
@@ -55,7 +56,7 @@ trait Oauth
         }
 
         // Create new user
-        return static::create([
+        $user = static::create([
             'name' => $providerUser->getName(),
             'email' => $providerUser->getEmail(),
             'provider' => $provider,
@@ -63,6 +64,12 @@ trait Oauth
             'avatar' => $providerUser->getAvatar(),
             'email_verified_at' => now(), // OAuth emails are pre-verified
         ]);
+
+        // Ensure new user has default IDR currency
+        $currencyService = app(CurrencyService::class);
+        $currencyService->ensureDefaultIdrCurrency($user);
+
+        return $user;
     }
 
     /**
